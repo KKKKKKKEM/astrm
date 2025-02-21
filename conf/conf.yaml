@@ -1,0 +1,18 @@
+alist:
+    - name: default
+      endpoint: alist服务地址
+      token: 你的token
+jobs:
+    - name: 追更
+      alist: 0
+      from:
+        - aliyun/媒体库/国产剧/仙台有树（2025）
+      dest: /data/media/国产剧
+      mode: alist_url
+      spec: ""
+      opts:
+        deep: 1
+        overwrite: true
+        filters: (?i)^\.(mp4|avi|mkv|mov|webm|flv|wmv|3gp|mpeg|mpg)$
+        extra: ""
+listen: :8080

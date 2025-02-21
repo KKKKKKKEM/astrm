@@ -1,0 +1,16 @@
+.container {
+    max-width: 1200px;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+td.editable {
+    cursor: pointer;
+}
+
+.editorjs {
+    border: 1px solid #ced4da;
+    padding: 10px;
+}
