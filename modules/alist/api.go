@@ -10,7 +10,7 @@ func Init() {
 	{
 		api.GET("", list)
 		api.POST("", create)
-		api.POST("/:name", modify)
-		api.DELETE("/:name", delete)
+		api.PATCH("/:name", modify)
+		api.DELETE("/:name", del)
 	}
 }

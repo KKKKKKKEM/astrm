@@ -25,15 +25,15 @@ type SaveOpt struct {
 }
 
 type Job struct {
-	Id      string   `yaml:"-" json:"id,omitempty"`
-	Name    string   `yaml:"name" json:"name,omitempty"`
-	Alist   int      `yaml:"alist" json:"alist"`
-	From    []string `yaml:"from" json:"from,omitempty"`
-	Dest    string   `yaml:"dest" json:"dest,omitempty"`
-	Mode    string   `yaml:"mode" json:"mode,omitempty"`
-	Spec    string   `yaml:"spec" json:"spec"`
-	Opts    Opts     `yaml:"opts" json:"opts"`
-	Handler Handler  `yaml:"-" json:"-"`
+	Id      string  `yaml:"-" json:"id,omitempty"`
+	Name    string  `yaml:"name" json:"name,omitempty"`
+	Alist   int     `yaml:"alist" json:"alist"`
+	From    string  `yaml:"from" json:"from,omitempty"`
+	Dest    string  `yaml:"dest" json:"dest,omitempty"`
+	Mode    string  `yaml:"mode" json:"mode,omitempty"`
+	Spec    string  `yaml:"spec" json:"spec"`
+	Opts    Opts    `yaml:"opts" json:"opts"`
+	Handler Handler `yaml:"-" json:"-"`
 }
 
 func (j Job) Run() {
@@ -43,16 +43,6 @@ func (j Job) Run() {
 		return
 	}
 
-}
-
-func (j *Job) Update(job Job) {
-	j.Name = job.Name
-	j.Spec = job.Spec
-	j.Mode = job.Mode
-	j.Opts = job.Opts
-	j.From = job.From
-	j.Dest = job.Dest
-	j.Alist = job.Alist
 }
 
 func Save(opt SaveOpt) (err error) {

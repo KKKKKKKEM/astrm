@@ -11,7 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchData(url) {
         const response = await fetch(url);
-        return response.json();
+        let result = await response.json();
+        showToast(result.msg);
+        return result
     }
 
     async function postData(url, data) {
@@ -22,7 +24,9 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             body: JSON.stringify(data),
         });
-        return response.json();
+        let result = await response.json();
+        showToast(result.msg);
+        return result
     }
 
     async function patchData(url, data) {
@@ -33,40 +37,54 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             body: JSON.stringify(data),
         });
-        return response.json();
+        let result =  await response.json();
+        showToast(result.msg);
+        return result;
     }
 
     async function deleteData(url) {
-        await fetch(url, { method: 'DELETE' });
+        let response = await fetch(url, {method: 'DELETE'});
+        let result = await response.json();
+        showToast(result.msg);
     }
 
-    function createEditableCell(value, onSave) {
+    function createEditableCell(obj, key, onSave) {
         const cell = document.createElement('td');
         cell.classList.add('editable');
+        let value = obj[key];
+        value = typeof value === 'object' ? JSON.stringify(value) : value;
 
         const span = document.createElement('span');
-        span.textContent = typeof value === 'object' ? JSON.stringify(value) : value;
+        span.textContent = value;
         cell.appendChild(span);
 
         cell.addEventListener('dblclick', async () => {
-            currentFieldInfo = { cell, onSave, originalValue: value };
+            currentFieldInfo = {cell, onSave, originalValue: value};
             $('#editModal').modal('show');
-            initializeEditor(value);
+            initializeEditor(obj, key);
         });
 
         return cell;
     }
 
-    function initializeEditor(value) {
+    function initializeEditor(obj, key) {
         if (editor) {
             editor.destroy();
         }
+        let value = obj[key];
+        value = typeof value === 'object' ? JSON.stringify(value) : value
 
         editor = new EditorJS({
             holder: 'editorjs',
             ...editorConfig,
-            data: { blocks: [{ type: 'code', data: { code: typeof value === 'object' ? JSON.stringify(value) : value } }] },
+            data: {blocks: [{type: 'code', data: {code: value}}]},
         });
+    }
+    function showToast(message) {
+        const toastBody = document.querySelector('#liveToast .toast-body');
+        toastBody.textContent = message;
+        const toast = new bootstrap.Toast(document.getElementById('liveToast'));
+        toast.show();
     }
 
     document.getElementById('saveEditBtn').addEventListener('click', async () => {
@@ -121,14 +139,14 @@ document.addEventListener('DOMContentLoaded', () => {
             label.textContent = field.charAt(0).toUpperCase() + field.slice(1);
             div.appendChild(label);
 
-            const inputType = field === 'from' || field === 'opts' || field === 'spec' ? 'textarea' : 'input';
+            const inputType = field === 'opts' || field === 'spec' ? 'textarea' : 'input';
             const input = document.createElement(inputType);
             input.className = 'form-control';
             input.name = field;
             if (initialData && initialData[field] !== undefined) {
                 input.value = inputType === 'textarea' ? JSON.stringify(initialData[field]) : initialData[field];
             }
-            if (field === 'from' || field === 'opts' || field === 'spec') {
+            if (field === 'opts' || field === 'spec') {
                 input.rows = 3;
             }
             div.appendChild(input);
@@ -142,7 +160,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const formData = new FormData(document.getElementById('addItemForm'));
             const payload = {};
             formData.forEach((value, key) => {
-                payload[key] = key === 'from' || key === 'opts' || key === 'spec' ? JSON.parse(value) : key === 'alist' ? parseInt(value, 10) : value;
+                payload[key] = key === 'opts' || key === 'spec' ? JSON.parse(value) : key === 'alist' ? parseInt(value, 10) : value;
+
             });
 
             if (onSave) {
@@ -167,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const keys = ["name", "endpoint", "token"];
                 for (const key of keys) {
                     ((key, alist) => {
-                        row.appendChild(createEditableCell(alist[key], async newValue => {
+                        row.appendChild(createEditableCell(alist, key, async newValue => {
                             alist[key] = newValue;
                             let data = {};
                             data[key] = newValue;
@@ -197,8 +216,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const keys = ["name", "from", "dest", "mode", "opts", "alist", "spec"];
                 for (const key of keys) {
                     ((key, job) => {
-                        row.appendChild(createEditableCell(key === 'alist' ? job[key].toString() : key === 'spec' ? JSON.stringify(job[key]) : job[key], async newValue => {
-                            job[key] = key === 'alist' ? parseInt(newValue, 10) : (key === 'spec' || key === "from") ? JSON.parse(newValue) : newValue;
+                        row.appendChild(createEditableCell(job, key, async newValue => {
+                            job[key] = key === 'alist' ? parseInt(newValue, 10) : key === 'opts' ? JSON.parse(newValue) : newValue;
                             let data = {};
                             data[key] = job[key];
                             await patchData(`/api/job/${job.id}`, data);

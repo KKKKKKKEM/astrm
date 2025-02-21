@@ -14,3 +14,10 @@ td.editable {
     border: 1px solid #ced4da;
     padding: 10px;
 }
+
+#toastContainer {
+    position: fixed;
+    top: 1rem; /* Adjusted to be at the top */
+    right: 1rem; /* Positioned at the right */
+    z-index: 1100;
+}

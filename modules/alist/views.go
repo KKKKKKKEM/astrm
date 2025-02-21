@@ -5,6 +5,7 @@ import (
 	"astrm/server"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strings"
 )
 
 func list(c *gin.Context) {
@@ -17,9 +18,10 @@ func create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
+	item.Endpoint = strings.Trim(item.Endpoint, "")
+	item.Endpoint = strings.Trim(item.Endpoint, "\n")
 	server.DB.Alist = append(server.DB.Alist, &item)
-	c.JSON(http.StatusCreated, item)
+	c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "success", "data": item})
 }
 
 func modify(c *gin.Context) {
@@ -31,20 +33,23 @@ func modify(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
 			}
-			c.JSON(http.StatusOK, a)
+			a.Endpoint = strings.Trim(a.Endpoint, "")
+			a.Endpoint = strings.Trim(a.Endpoint, "\n")
+			c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "success", "data": a})
 			return
 		}
 	}
 	c.JSON(http.StatusNotFound, gin.H{"code": -1, "msg": "alist not found"})
 
 }
-func delete(c *gin.Context) {
+func del(c *gin.Context) {
 	alistName := c.Param("name")
 
 	for i, a := range server.DB.Alist {
 		if a.Name == alistName {
 			// 删除
 			server.DB.Alist = append(server.DB.Alist[:i], server.DB.Alist[i+1:]...)
+			c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "success", "data": a})
 			return
 		}
 	}

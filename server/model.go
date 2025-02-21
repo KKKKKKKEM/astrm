@@ -49,6 +49,10 @@ func (s *Storage) RegisterJob(j *job.Job) (err error) {
 		j.Opts.Filters = VideoRegex
 	}
 
+	if j.Mode == "" {
+		j.Mode = "alist_url"
+	}
+
 	if j.Spec != "" {
 		if entryID, err = DB.Cron.AddJob(j.Spec, j); err != nil {
 			return

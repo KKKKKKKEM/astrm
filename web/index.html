@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alist and Job Manager</title>
+    <title>Astrm</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="static/style.css">
 </head>
 <body>
 <div class="container mt-5">
-    <h1 class="text-center mb-4">Alist and Job Manager</h1>
+    <h1 class="text-center mb-4">Astrm</h1>
 
-    <h2>Alist List</h2>
+    <h2>Alist</h2>
     <button id="addAlistBtn" class="btn btn-primary mb-3">Add Alist</button>
     <table id="alistTable" class="table table-bordered table-striped">
         <thead>
@@ -27,7 +27,7 @@
         </tbody>
     </table>
 
-    <h2>Job List</h2>
+    <h2>Job</h2>
     <button id="addJobBtn" class="btn btn-primary mb-3">Add Job</button>
     <table id="jobTable" class="table table-bordered table-striped">
         <thead>
@@ -88,6 +88,22 @@
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" id="saveEditBtn">Save changes</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toastContainer" class="position-fixed bottom-0 right-0 p-3" style="z-index: 1100;">
+    <div id="liveToast" class="toast hide" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="mr-auto">Notification</strong>
+            <small></small>
+            <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <div class="toast-body">
+            Hello, world! This is a toast message.
         </div>
     </div>
 </div>

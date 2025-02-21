@@ -1,12 +1,13 @@
 alist:
     - name: default
-      endpoint: alist服务地址
-      token: 你的token
+      endpoint: 你的alist服务地址
+      token: alist token
 jobs:
     - name: 追更
       alist: 0
-      from:
-        - aliyun/媒体库/国产剧/仙台有树（2025）
+      from: |+
+        aliyun/媒体库/国产剧/仙台有树（2025）
+
       dest: /data/media/国产剧
       mode: alist_url
       spec: ""

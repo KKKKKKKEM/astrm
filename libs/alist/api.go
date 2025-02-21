@@ -77,7 +77,11 @@ func (r *Result) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 func (a *Server) Handle(j *job.Job) (err error) {
-	for _, from := range j.From {
+	for _, from := range strings.Split(j.From, "\n") {
+		from = strings.Trim(from, "")
+		if from == "" {
+			continue
+		}
 		list := a.FsList(from, true, j.Opts.Filters)
 		for content := range list {
 			o := job.SaveOpt{
@@ -118,17 +122,25 @@ func (a *Server) sendRequest(uri, method, data string) (result Result, err error
 		u       string
 		payload *strings.Reader
 	)
-	u, _ = url.JoinPath(a.Endpoint, uri)
+	u, err = url.JoinPath(a.Endpoint, uri)
+	if err != nil {
+		err = fmt.Errorf("uri: %s, err: %s", uri, err.Error())
+		return
+	}
 	if data != "" {
 		payload = strings.NewReader(data)
 	}
-
 	req, _ := http.NewRequest(method, u, payload)
 
 	req.Header.Add("content-type", "application/json")
 	req.Header.Add("Accept", "application/json, text/plain, */*")
 	req.Header.Add("Authorization", a.Token)
-	res, _ := http.DefaultClient.Do(req)
+	var res *http.Response
+	res, err = http.DefaultClient.Do(req)
+	if err != nil {
+		err = fmt.Errorf("uri: %s, err: %s", uri, err.Error())
+		return
+	}
 
 	if res.StatusCode != 200 {
 		err = fmt.Errorf("uri: %s, status code: %d", uri, res.StatusCode)
@@ -161,7 +173,7 @@ func (a *Server) FsList(path string, recursion bool, filter string) (res <-chan 
 			data := fmt.Sprintf(`{"path":"%s","password":"","page":1,"per_page":0,"refresh":false}`, path)
 			result, err := a.sendRequest("api/fs/list", "POST", data)
 			if err != nil {
-				log.Printf("[FsList Error] path: %s, err: %v", path, err)
+				log.Printf("[FsList Error] path: %s, %v", path, err)
 				return
 			}
 
@@ -198,7 +210,7 @@ func (a *Server) FsGet(path string) (content FsGet, err error) {
 	data := fmt.Sprintf(`{"path":"%s","password":""}`, path)
 	result, err = a.sendRequest("api/fs/get", "POST", data)
 	if err != nil {
-		err = fmt.Errorf("[FsGet Error] path: %s, err: %v", path, err)
+		err = fmt.Errorf("[FsGet Error] path: %s, %v", path, err)
 		return
 	}
 

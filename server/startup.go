@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/robfig/cron/v3"
 	"log"
+	"strings"
 )
 
 var (
@@ -14,9 +15,11 @@ var (
 	VideoRegex = `(?i)^\.(mp4|avi|mkv|mov|webm|flv|wmv|3gp|mpeg|mpg)$`
 )
 
-func setupJobs() (err error) {
+func setupDB() (err error) {
 	for i, a := range DB.Alist {
 		a.Id = i
+		a.Endpoint = strings.Trim(a.Endpoint, "\n")
+		a.Endpoint = strings.Trim(a.Endpoint, "")
 	}
 
 	DB.Cron = cron.New(cron.WithSeconds())
@@ -54,10 +57,10 @@ func Init() {
 	DB = new(Storage)
 
 	if err = DB.fromYaml(configPath); err != nil {
-		panic("read config failure, err：" + err.Error())
+		log.Println("read config failure, err：" + err.Error())
 	}
 
-	if err = setupJobs(); err != nil {
+	if err = setupDB(); err != nil {
 		panic("setup job failure, err：" + err.Error())
 	}
 	_, _ = DB.Cron.AddFunc("*/10 * * * * ?", func() {
