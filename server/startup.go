@@ -1,31 +1,33 @@
 package server
 
 import (
-	"flag"
 	"github.com/gin-gonic/gin"
+	"github.com/natefinch/lumberjack"
 	"github.com/robfig/cron/v3"
+	"github.com/sirupsen/logrus"
+	"io"
 	"log"
+	"os"
 	"strings"
 )
 
 var (
-	DB         *Storage
-	configPath = *flag.String("config", "conf/conf.yaml", "config file path")
+	Cfg        *Storage
 	r          *gin.Engine
 	VideoRegex = `(?i)^\.(mp4|avi|mkv|mov|webm|flv|wmv|3gp|mpeg|mpg)$`
 )
 
-func setupDB() (err error) {
-	for i, a := range DB.Alist {
+func setupCfg() (err error) {
+	for i, a := range Cfg.Alist {
 		a.Id = i
 		a.Endpoint = strings.Trim(a.Endpoint, "\n")
 		a.Endpoint = strings.Trim(a.Endpoint, "")
 	}
 
-	DB.Cron = cron.New(cron.WithSeconds())
+	Cfg.Cron = cron.New(cron.WithSeconds())
 
-	for _, j := range DB.Jobs {
-		if err = DB.RegisterJob(j); err != nil {
+	for _, j := range Cfg.Jobs {
+		if err = Cfg.RegisterJob(j); err != nil {
 			return
 		}
 	}
@@ -47,33 +49,64 @@ func setupHttpServer() {
 	})
 }
 
+func setupLog() {
+	logrus.SetOutput(os.Stdout)
+	logrus.SetFormatter(&logrus.JSONFormatter{})
+	if Cfg.Debug {
+		logrus.SetLevel(logrus.DebugLevel)
+	} else {
+		logrus.SetLevel(logrus.Level(Cfg.Log.Level))
+		gin.SetMode(gin.ReleaseMode)
+	}
+	if Cfg.Log.Path != "" {
+		logfile := &lumberjack.Logger{
+			Filename:   Cfg.Log.Path, // 日志文件路径
+			MaxSize:    5,            // megabytes
+			MaxBackups: 3,            // 最多保留的旧文件数量
+			MaxAge:     28,           // days
+			Compress:   true,         // 是否启用压缩
+		}
+		// 使用MultiWriter可以同时向多个目标输出日志
+		logrus.SetOutput(io.MultiWriter(logfile, os.Stdout))
+	}
+
+}
 func GetApp() *gin.Engine {
 	return r
 }
 
-func Init() {
+func Init(configPath string) {
 	var err error
-	flag.Parse()
-	DB = new(Storage)
+	Cfg = new(Storage)
 
-	if err = DB.fromYaml(configPath); err != nil {
+	if err = Cfg.fromYaml(configPath); err != nil {
 		log.Println("read config failure, err：" + err.Error())
 	}
 
-	if err = setupDB(); err != nil {
+	setupLog()
+
+	if err = setupCfg(); err != nil {
 		panic("setup job failure, err：" + err.Error())
 	}
-	_, _ = DB.Cron.AddFunc("*/10 * * * * ?", func() {
-		err := DB.store(configPath)
+	if Cfg.Persistence != "" {
+		_, err = Cfg.Cron.AddFunc(Cfg.Persistence, func() {
+			err := Cfg.store(configPath)
+			if err != nil {
+				logrus.Errorln("save config failure, err：" + err.Error())
+			}
+		})
 		if err != nil {
-			log.Println("save config failure, err：" + err.Error())
+			logrus.Errorln("add persistence job failure, err：" + err.Error())
 		}
-	})
+	}
+
 	setupHttpServer()
 
 }
 
 func Run() {
-	DB.Cron.Start()
-	_ = r.Run(DB.Listen)
+	Cfg.Cron.Start()
+	logrus.Infof("listen: %s", Cfg.Listen)
+	_ = r.Run(Cfg.Listen)
+
 }

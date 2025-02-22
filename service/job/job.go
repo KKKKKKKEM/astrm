@@ -3,7 +3,7 @@ package job
 import (
 	"astrm/utils"
 	"fmt"
-	"log"
+	"github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,7 +39,7 @@ type Job struct {
 func (j Job) Run() {
 	err := j.Handler.Handle(&j)
 	if err != nil {
-		log.Printf("error running job, job name: %s, job id: %s, err: %v\n", j.Name, j.Id, err)
+		logrus.Printf("error running job, job name: %s, job id: %s, err: %v\n", j.Name, j.Id, err)
 		return
 	}
 
@@ -70,7 +70,7 @@ func Save(opt SaveOpt) (err error) {
 	if _, err = file.Write(opt.Content); err != nil {
 		return
 	}
-	log.Print("save: ", filePath)
+	logrus.Print("save: ", filePath)
 	return
 
 }

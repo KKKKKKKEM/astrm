@@ -1,15 +1,15 @@
 package job
 
 import (
-	"astrm/libs/job"
 	"astrm/server"
+	"astrm/service/job"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"net/http"
 )
 
 func list(c *gin.Context) {
-	c.JSON(http.StatusOK, server.DB.Jobs)
+	c.JSON(http.StatusOK, server.Cfg.Jobs)
 }
 
 func create(c *gin.Context) {
@@ -19,7 +19,7 @@ func create(c *gin.Context) {
 		return
 	}
 
-	err := server.DB.RegisterJob(&item)
+	err := server.Cfg.RegisterJob(&item)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"code": "-1", "msg": err.Error()})
 	} else {
@@ -28,8 +28,8 @@ func create(c *gin.Context) {
 }
 func delete(c *gin.Context) {
 	jobId := c.Param("id")
-	if idx, thisJob := server.DB.FindJob(&job.Job{Id: jobId}); idx != -1 {
-		err := server.DB.UnRegisterJob(thisJob)
+	if idx, thisJob := server.Cfg.FindJob(&job.Job{Id: jobId}); idx != -1 {
+		err := server.Cfg.UnRegisterJob(thisJob)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"code": -1, "msg": err.Error()})
 			return
@@ -43,7 +43,7 @@ func delete(c *gin.Context) {
 
 func get(c *gin.Context) {
 	jobId := c.Param("id")
-	if idx, thisJob := server.DB.FindJob(&job.Job{Id: jobId}); idx != -1 {
+	if idx, thisJob := server.Cfg.FindJob(&job.Job{Id: jobId}); idx != -1 {
 		c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "success", "data": thisJob})
 		return
 	}
@@ -54,7 +54,7 @@ func get(c *gin.Context) {
 func run(c *gin.Context) {
 	jobId := c.Param("id")
 
-	if idx, thisJob := server.DB.FindJob(&job.Job{Id: jobId}); idx != -1 {
+	if idx, thisJob := server.Cfg.FindJob(&job.Job{Id: jobId}); idx != -1 {
 		go thisJob.Run()
 		c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "success", "data": thisJob})
 		return
@@ -66,7 +66,7 @@ func run(c *gin.Context) {
 func modify(c *gin.Context) {
 
 	jobId := c.Param("id")
-	idx, thisJob := server.DB.FindJob(&job.Job{Id: jobId})
+	idx, thisJob := server.Cfg.FindJob(&job.Job{Id: jobId})
 	if idx != -1 {
 		rawSpec := thisJob.Spec
 		if err := c.ShouldBindJSON(&thisJob); err != nil {
@@ -75,11 +75,11 @@ func modify(c *gin.Context) {
 		}
 		// 变化了要重新注册 job
 		if thisJob.Spec != rawSpec {
-			if err := server.DB.UnRegisterJob(thisJob); err != nil {
+			if err := server.Cfg.UnRegisterJob(thisJob); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
 			}
-			server.DB.Jobs = append(server.DB.Jobs, thisJob)
+			server.Cfg.Jobs = append(server.Cfg.Jobs, thisJob)
 		}
 		c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "success", "data": thisJob})
 

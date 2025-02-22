@@ -182,15 +182,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             alists.forEach(alist => {
                 const row = document.createElement('tr');
-
                 const keys = ["name", "endpoint", "token"];
                 for (const key of keys) {
                     ((key, alist) => {
                         row.appendChild(createEditableCell(alist, key, async newValue => {
+                            let uri = `/api/alist/${alist.name}`
                             alist[key] = newValue;
                             let data = {};
                             data[key] = newValue;
-                            await patchData(`/api/alist/${alist.name}`, data);
+                            await patchData(uri, data);
                         }));
                     })(key, alist);
                 }
@@ -217,10 +217,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (const key of keys) {
                     ((key, job) => {
                         row.appendChild(createEditableCell(job, key, async newValue => {
+                            let uri = `/api/job/${job.id}`
                             job[key] = key === 'alist' ? parseInt(newValue, 10) : key === 'opts' ? JSON.parse(newValue) : newValue;
                             let data = {};
                             data[key] = job[key];
-                            await patchData(`/api/job/${job.id}`, data);
+                            await patchData(uri, data);
                         }));
                     })(key, job);
                 }

@@ -8,6 +8,7 @@
 
 td.editable {
     cursor: pointer;
+    white-space: pre-wrap; /* Allows text to wrap within the cell */
 }
 
 .editorjs {
@@ -20,4 +21,8 @@ td.editable {
     top: 1rem; /* Adjusted to be at the top */
     right: 1rem; /* Positioned at the right */
     z-index: 1100;
+}
+
+.toast-body {
+    white-space: pre-wrap; /* Ensures that line breaks in messages are respected */
 }

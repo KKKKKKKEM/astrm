@@ -1,19 +1,43 @@
-alist:
-    - name: default
-      endpoint: 你的alist服务地址
-      token: alist token
-jobs:
-    - name: 追更
-      alist: 0
-      from: |+
-        aliyun/媒体库/国产剧/仙台有树（2025）
+debug: true # debug 模式
+persistence: '@every 10s' # 持久化配置的间隔
+listen: :8080 # 监听端口
 
-      dest: /data/media/国产剧
-      mode: alist_url
-      spec: ""
-      opts:
-        deep: 1
-        overwrite: true
-        filters: (?i)^\.(mp4|avi|mkv|mov|webm|flv|wmv|3gp|mpeg|mpg)$
-        extra: ""
-listen: :8080
+
+alist:
+  - name: 默认 # alist 名称
+    endpoint: http://host.docker.internal # alist 地址
+    token: alist-xxxx # alist token
+
+# strm jobs
+jobs:
+  - name: 追更
+    alist: 0
+    from: |-
+      aliyun/媒体库/国产剧/仙台有树（2025）
+      aliyun/媒体库/国产剧/仙台有2树（2025）
+    dest: /data/media/国产剧
+    mode: alist_url
+    spec: ""
+    opts:
+      deep: 1
+      overwrite: true
+      filters: (?i)^\.(mp4|avi|mkv|mov|webm|flv|wmv|3gp|mpeg|mpg)$
+      extra: ""
+
+# emby 配置
+emby:
+  addr: http://youremby.com
+  apiKey: xxx
+  httpStrm:
+    - enable: true
+      match: /data/media
+      actions:
+        - type: replace # 替换模式
+          args: http://host.docker.internal -> http://youremby.com
+      transCode: false
+  alistStrm: [ ]
+
+log:
+  level: 4
+  path: logs/app.log
+entrance: "enter" # strm 管理入口，记得修改，不然谁都可以进去

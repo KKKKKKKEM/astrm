@@ -1,8 +1,8 @@
 package server
 
 import (
-	"astrm/libs/alist"
-	"astrm/libs/job"
+	"astrm/service/alist"
+	"astrm/service/job"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/robfig/cron/v3"
@@ -11,11 +11,47 @@ import (
 	"strconv"
 )
 
+type Emby struct {
+	Addr      string      `yaml:"addr"`
+	ApiKey    string      `yaml:"apiKey"`
+	HttpStrm  []HttpStrm  `yaml:"httpStrm"`
+	AlistStrm []AlistStrm `yaml:"alistStrm"`
+}
+
+type Action struct {
+	Type string `yaml:"type"`
+	Args string `yaml:"args"`
+}
+
+type HttpStrm struct {
+	Enable    bool     `yaml:"enable" json:"enable"`
+	Match     string   `yaml:"match" json:"match"`
+	Actions   []Action `yaml:"actions" json:"actions"`
+	TransCode bool     `yaml:"transCode" json:"transCode"`
+}
+
+type AlistStrm struct {
+	Enable    bool   `yaml:"enable" json:"enable"`
+	Match     string `yaml:"match" json:"match"`
+	Actions   Action `yaml:"actions" json:"actions"`
+	Alist     int    `yaml:"alist" json:"alist"`
+	TransCode bool   `yaml:"transCode" json:"transCode"`
+	RawURL    bool   `yaml:"rawURL" json:"rawURL"`
+}
+
 type Storage struct {
-	Alist  []*alist.Server `yaml:"alist"`
-	Jobs   []*job.Job      `yaml:"jobs"`
-	Listen string          `yaml:"listen"`
-	Cron   *cron.Cron      `yaml:"-"`
+	Debug       bool            `yaml:"debug"`
+	Persistence string          `yaml:"persistence"`
+	Alist       []*alist.Server `yaml:"alist"`
+	Jobs        []*job.Job      `yaml:"jobs"`
+	Listen      string          `yaml:"listen"`
+	Cron        *cron.Cron      `yaml:"-"`
+	Emby        Emby            `yaml:"emby"`
+	Log         struct {
+		Level int    `yaml:"level"`
+		Path  string `yaml:"path"`
+	} `yaml:"log"`
+	Entrance string `yaml:"entrance"`
 }
 
 func (s *Storage) fromYaml(path string) (err error) {
@@ -44,7 +80,7 @@ func (s *Storage) RegisterJob(j *job.Job) (err error) {
 	var entryID cron.EntryID
 	isInit := j.Id == ""
 	// 重新注册
-	j.Handler = DB.Alist[j.Alist]
+	j.Handler = Cfg.Alist[j.Alist]
 	if j.Opts.Filters == "" {
 		j.Opts.Filters = VideoRegex
 	}
@@ -54,7 +90,7 @@ func (s *Storage) RegisterJob(j *job.Job) (err error) {
 	}
 
 	if j.Spec != "" {
-		if entryID, err = DB.Cron.AddJob(j.Spec, j); err != nil {
+		if entryID, err = Cfg.Cron.AddJob(j.Spec, j); err != nil {
 			return
 		}
 		j.Id = fmt.Sprintf("%d", entryID)
@@ -63,7 +99,7 @@ func (s *Storage) RegisterJob(j *job.Job) (err error) {
 		j.Id = uuid.NewString()
 	}
 	if !isInit {
-		DB.Jobs = append(DB.Jobs, j)
+		Cfg.Jobs = append(Cfg.Jobs, j)
 
 	}
 	return
@@ -72,9 +108,9 @@ func (s *Storage) RegisterJob(j *job.Job) (err error) {
 func (s *Storage) UnRegisterJob(j *job.Job) (err error) {
 
 	if idx, j2 := s.FindJob(j); idx != -1 {
-		DB.Jobs = append(DB.Jobs[:idx], DB.Jobs[idx+1:]...)
+		Cfg.Jobs = append(Cfg.Jobs[:idx], Cfg.Jobs[idx+1:]...)
 		if entyId, err2 := strconv.ParseInt(j2.Id, 10, 64); err2 == nil {
-			DB.Cron.Remove(cron.EntryID(entyId))
+			Cfg.Cron.Remove(cron.EntryID(entyId))
 		}
 	}
 
@@ -82,7 +118,7 @@ func (s *Storage) UnRegisterJob(j *job.Job) (err error) {
 }
 
 func (s *Storage) FindJob(j2 *job.Job) (int, *job.Job) {
-	for idx, j := range DB.Jobs {
+	for idx, j := range Cfg.Jobs {
 		if j.Id == j2.Id || j == j2 {
 			return idx, j
 		}

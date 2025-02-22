@@ -1,12 +1,12 @@
 package alist
 
 import (
-	"astrm/libs/job"
+	"astrm/service/job"
 	"astrm/utils"
 	"encoding/json"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -96,7 +96,7 @@ func (a *Server) Handle(j *job.Job) (err error) {
 				if get, err := a.FsGet(content.Name); err != nil {
 					o.Content = []byte(get.RawURL)
 				} else {
-					log.Println(err)
+					logrus.Errorln(err)
 					continue
 				}
 
@@ -110,7 +110,7 @@ func (a *Server) Handle(j *job.Job) (err error) {
 				o.Content = []byte(r)
 			}
 			if err = job.Save(o); err != nil {
-				log.Printf("[Save Error] %v", err)
+				logrus.Errorln("[Save Error] %v", err)
 			}
 		}
 	}
@@ -170,10 +170,10 @@ func (a *Server) FsList(path string, recursion bool, filter string) (res <-chan 
 		for len(pending) > 0 {
 			path := pending[0]
 			pending = pending[1:]
-			data := fmt.Sprintf(`{"path":"%s","password":"","page":1,"per_page":0,"refresh":false}`, path)
+			data := fmt.Sprintf(`{"path":"%s","password":"","page":1,"per_page":0,"refresh":true}`, path)
 			result, err := a.sendRequest("api/fs/list", "POST", data)
 			if err != nil {
-				log.Printf("[FsList Error] path: %s, %v", path, err)
+				logrus.Errorln("[FsList Error] path: %s, %v", path, err)
 				return
 			}
 

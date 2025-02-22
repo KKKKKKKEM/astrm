@@ -1,15 +1,15 @@
 package alist
 
 import (
-	"astrm/libs/alist"
 	"astrm/server"
+	"astrm/service/alist"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
 )
 
 func list(c *gin.Context) {
-	c.JSON(http.StatusOK, server.DB.Alist)
+	c.JSON(http.StatusOK, server.Cfg.Alist)
 }
 
 func create(c *gin.Context) {
@@ -20,14 +20,14 @@ func create(c *gin.Context) {
 	}
 	item.Endpoint = strings.Trim(item.Endpoint, "")
 	item.Endpoint = strings.Trim(item.Endpoint, "\n")
-	server.DB.Alist = append(server.DB.Alist, &item)
+	server.Cfg.Alist = append(server.Cfg.Alist, &item)
 	c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "success", "data": item})
 }
 
 func modify(c *gin.Context) {
 	alistName := c.Param("name")
 
-	for _, a := range server.DB.Alist {
+	for _, a := range server.Cfg.Alist {
 		if a.Name == alistName {
 			if err := c.ShouldBindJSON(&a); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -45,10 +45,10 @@ func modify(c *gin.Context) {
 func del(c *gin.Context) {
 	alistName := c.Param("name")
 
-	for i, a := range server.DB.Alist {
+	for i, a := range server.Cfg.Alist {
 		if a.Name == alistName {
 			// 删除
-			server.DB.Alist = append(server.DB.Alist[:i], server.DB.Alist[i+1:]...)
+			server.Cfg.Alist = append(server.Cfg.Alist[:i], server.Cfg.Alist[i+1:]...)
 			c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "success", "data": a})
 			return
 		}
