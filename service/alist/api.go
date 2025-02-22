@@ -78,7 +78,7 @@ func (r *Result) Marshal() ([]byte, error) {
 }
 func (a *Server) Handle(j *job.Job) (err error) {
 	for _, from := range strings.Split(j.From, "\n") {
-		from = strings.Trim(from, "")
+		from = strings.TrimSpace(from)
 		if from == "" {
 			continue
 		}

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"astrm/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/natefinch/lumberjack"
 	"github.com/robfig/cron/v3"
@@ -20,8 +21,7 @@ var (
 func setupCfg() (err error) {
 	for i, a := range Cfg.Alist {
 		a.Id = i
-		a.Endpoint = strings.Trim(a.Endpoint, "\n")
-		a.Endpoint = strings.Trim(a.Endpoint, "")
+		a.Endpoint = strings.TrimSpace(a.Endpoint)
 	}
 
 	Cfg.Cron = cron.New(cron.WithSeconds())
@@ -35,18 +35,12 @@ func setupCfg() (err error) {
 }
 
 func setupHttpServer() {
-	r = gin.Default()
-	// 配置 CORS 中间件（开发环境）
-	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-		c.Next()
-	})
+	r = gin.New()
+	gin.SetMode(gin.ReleaseMode)
+	//配置 CORS 中间件（开发环境）
+	r.Use(middleware.SetRefererPolicy("same-origin"))
+	r.Use(middleware.QueryCaseInsensitive())
+	r.Use(middleware.SetCors())
 }
 
 func setupLog() {

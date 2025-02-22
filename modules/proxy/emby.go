@@ -253,8 +253,8 @@ func (embyServerHandler *EmbyServerHandler) VideosHandler(ctx *gin.Context) {
 					for _, action := range cfg.Actions {
 						switch action.Type {
 						case "replace":
-							rl := strings.Split(action.Type, "->")
-							*mediasource.Path = strings.ReplaceAll(*mediasource.Path, strings.Trim(rl[0], ""), strings.Trim(rl[1], ""))
+							rl := strings.Split(action.Args, "->")
+							*mediasource.Path = strings.ReplaceAll(*mediasource.Path, strings.TrimSpace(rl[0]), strings.TrimSpace(rl[1]))
 
 						}
 					}

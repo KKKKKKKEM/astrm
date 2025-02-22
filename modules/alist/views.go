@@ -18,8 +18,7 @@ func create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	item.Endpoint = strings.Trim(item.Endpoint, "")
-	item.Endpoint = strings.Trim(item.Endpoint, "\n")
+	item.Endpoint = strings.TrimSpace(item.Endpoint)
 	server.Cfg.Alist = append(server.Cfg.Alist, &item)
 	c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "success", "data": item})
 }
@@ -33,8 +32,7 @@ func modify(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
 			}
-			a.Endpoint = strings.Trim(a.Endpoint, "")
-			a.Endpoint = strings.Trim(a.Endpoint, "\n")
+			a.Endpoint = strings.TrimSpace(a.Endpoint)
 			c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "success", "data": a})
 			return
 		}

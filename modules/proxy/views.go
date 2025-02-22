@@ -32,8 +32,7 @@ type RegexpRouteRule struct {
 }
 
 func proxy(ctx *gin.Context) {
-	embyServerHandler := NewHandler()
-	for _, rule := range embyServerHandler.GetRegexpRouteRules() {
+	for _, rule := range handler.GetRegexpRouteRules() {
 		if rule.Regexp.MatchString(ctx.Request.RequestURI) { // 带有查询参数的字符串：/emby/Items/54/Images/Primary?maxWidth=600&tag=f66addf8af207bdc39cdb4dd56db0d0b&quality=90
 			rule.Handler(ctx)
 			return
@@ -41,5 +40,5 @@ func proxy(ctx *gin.Context) {
 	}
 
 	// 未匹配路由
-	embyServerHandler.ReverseProxy(ctx.Writer, ctx.Request)
+	handler.ReverseProxy(ctx.Writer, ctx.Request)
 }
