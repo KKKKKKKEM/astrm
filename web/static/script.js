@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('addJobBtn').addEventListener('click', () => {
-        showAddEditModal({}, null, ['id', 'name', 'from', 'dest', 'mode', 'opts', 'alist', 'spec'], 'job');
+        showAddEditModal({}, null, ['name', 'from', 'dest', 'mode', 'opts', 'alist', 'spec'], 'job');
     });
 
     loadTables();
