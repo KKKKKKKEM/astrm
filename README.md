@@ -132,4 +132,4 @@ entrance: "enter"
 # 鸣谢
 - [MediaWarp](https://github.com/Akimio521/MediaWarp)
 - [AutoFilm](https://github.com/Akimio521/AutoFilm)
-- [cron]([https://github.com/Akimio521/AutoFilm](https://github.com/robfig/cron))
+- [cron](https://github.com/robfig/cron)
