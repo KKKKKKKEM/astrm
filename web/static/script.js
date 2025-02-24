@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             body: JSON.stringify(data),
         });
-        let result =  await response.json();
+        let result = await response.json();
         showToast(result.msg);
         return result;
     }
@@ -73,6 +73,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         let value = obj[key];
         value = typeof value === 'object' ? JSON.stringify(value) : value
+        let tag = document.querySelector('#editModalLabel')
+        tag.innerHTML = `Edit ${key}`
+        tag.innerText = `Edit ${key}`
+        tag.textContent = `Edit ${key}`
 
         editor = new EditorJS({
             holder: 'editorjs',
@@ -80,12 +84,15 @@ document.addEventListener('DOMContentLoaded', () => {
             data: {blocks: [{type: 'code', data: {code: value}}]},
         });
     }
+
     function showToast(message) {
         const toastBody = document.querySelector('#liveToast .toast-body');
         toastBody.textContent = message;
         const toast = new bootstrap.Toast(document.getElementById('liveToast'));
         toast.show();
     }
+
+    window.showToast = showToast
 
     document.getElementById('saveEditBtn').addEventListener('click', async () => {
         editor.saver.save().then((outputData) => {
@@ -98,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function addCopyButton(cell, rowData, fields, tableName) {
         const copyButton = document.createElement('button');
-        copyButton.className = 'btn btn-info mr-2';
+        copyButton.className = 'btn btn-info mr-2 action-btn';
         copyButton.textContent = 'Copy';
         copyButton.onclick = () => {
             showAddEditModal(rowData, null, fields, tableName);
@@ -108,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function addDeleteButton(cell, url) {
         const deleteButton = document.createElement('button');
-        deleteButton.className = 'btn btn-danger';
+        deleteButton.className = 'btn btn-danger action-btn';
         deleteButton.textContent = 'Delete';
         deleteButton.onclick = async () => {
             await deleteData(url);
@@ -119,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function addRunButton(cell, jobId) {
         const runButton = document.createElement('button');
-        runButton.className = 'btn btn-success mr-2';
+        runButton.className = 'btn btn-success mr-2 action-btn';
         runButton.textContent = 'Run';
         runButton.onclick = async () => {
             await postData(`/api/job/${jobId}`, {});
@@ -196,6 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const actionCell = document.createElement('td');
+                actionCell.classList.add('action-cell');
                 addCopyButton(actionCell, alist, keys, 'alist');
                 addDeleteButton(actionCell, `/api/alist/${alist.name}`);
                 row.appendChild(actionCell);
@@ -227,6 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const actionCell = document.createElement('td');
+                actionCell.classList.add('action-cell');
                 addRunButton(actionCell, job.id);
                 addCopyButton(actionCell, job, keys, 'job');
                 addDeleteButton(actionCell, `/api/job/${job.id}`);

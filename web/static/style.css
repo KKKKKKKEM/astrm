@@ -8,7 +8,9 @@
 
 td.editable {
     cursor: pointer;
-    white-space: pre-wrap; /* Allows text to wrap within the cell */
+    white-space: pre;
+    overflow-x: auto;
+    max-width: 300px;
 }
 
 .editorjs {
@@ -25,4 +27,18 @@ td.editable {
 
 .toast-body {
     white-space: pre-wrap; /* Ensures that line breaks in messages are respected */
+}
+
+.action-cell {
+    width: 100px; /* Set your desired width here */
+}
+
+.action-btn {
+    width: 90px;
+    margin: 3px
+}
+
+/* Modal styles for code editor */
+.modal-lg {
+    max-width: 80%;
 }
