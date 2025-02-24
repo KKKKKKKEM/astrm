@@ -24,7 +24,7 @@
 `astrm` 是 `emby` 的拓展工具，**前置于 EmbyServer 的 反向代理服务器**，主要逻辑参考了 [MediaWarp](https://github.com/Akimio521/MediaWarp) 和 [AutoFilm](https://github.com/Akimio521/AutoFilm) 两个项目，相当于将二者功能合并，然后稍微新增了点功能
 
 主要功能如下：
-- [x] 自动调度 `alist` 转 `strm` 文件任务，方便扫库，降低风控 
+- [x] 自动调度 `alist` 转 `strm` 文件任务，完成emby 接入 `alist` 方案，避免挂载，方便扫库，降低风控 
 - [x] 反向代理 `emby` 服务器，完成直链 `302` 重定向服务 （不消耗emby服务器带宽）
 - [x] 提供 web 页面可视化管理 `strm` 文件生成任务和 `alist` 配置等
 - [x] 手动触发 `strm` 任务
