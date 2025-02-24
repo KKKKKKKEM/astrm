@@ -18,13 +18,13 @@ version: "3"
 services:
     astrm:
         volumes:
-            - /config:/config
-            - /media:/media
-            - /logs:/logs
+            - /config:/config # 初始化配置映射，配置文件名为 conf.yaml
+            - /media:/media # 媒体库，就是strm文件存储的路径映射
+            - /logs:/logs # 日志存储
         container_name: astrm
         image: 531144129/astrm:latest
         ports:
-            - '8097:8080'
+            - '8097:8080' # 映射 8097端口出来，docker外面就直接访问 8097即可
 ```
 
 # 配置文件
