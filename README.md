@@ -1,15 +1,18 @@
 # astrm
-`emby` 拓展工具，主要功能如下：
+`emby` 拓展工具，主要逻辑参考了 [MediaWarp](https://github.com/Akimio521/MediaWarp) 和 [AutoFilm](https://github.com/Akimio521/AutoFilm) 两个项目，相当于将二者功能合并，然后稍微新增了点功能
+
+主要功能如下：
 -  手动 / 自动将 `alist` 上的文件转为 `strm` 文件存到本地，方便扫库，降低风控 
 -  代理 `emby` 服务器，完成直链 `302` 重定向服务 （不消耗emby服务器带宽）
+-  提供 web 页面可视化管理 strm 文件生成和配置等
 
-`docker` 运行
+`docker` 部署
 ```bash
 
 docker run -d --name astrm  -v ./config:/config -v ./media:/media -v ./logs:/logs 531144129/astrm -p 8097:8080
 ```
 
-`docker-compose` 运行
+`docker-compose` 部署
 ```yaml
 version: "3"
 services:
@@ -125,3 +128,7 @@ entrance: "enter"
 # `emby` 服务
 访问地址：`http://host:port/` 即可访问你的 `emby` 服务，emby服务可以部署在内网，只要 `astrm` 服务可以正常访问到即可
 ![img_1.png](web/static/img_1.png)
+
+# 鸣谢
+- [MediaWarp](https://github.com/Akimio521/MediaWarp)
+- [AutoFilm](https://github.com/Akimio521/AutoFilm)
