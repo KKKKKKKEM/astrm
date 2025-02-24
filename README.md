@@ -3,6 +3,27 @@
 -  手动 / 自动将 `alist` 上的文件转为 `strm` 文件存到本地，方便扫库，降低风控 
 -  代理 `emby` 服务器，完成直链 `302` 重定向服务 （不消耗emby服务器带宽）
 
+`docker` 运行
+```bash
+
+docker run -d --name astrm  -v ./config:/config -v ./media:/media -v ./logs:/logs 531144129/astrm -p 8097:8080
+```
+
+`docker-compose` 运行
+```yaml
+version: "3"
+services:
+    astrm:
+        volumes:
+            - /config:/config
+            - /media:/media
+            - /logs:/logs
+        container_name: astrm
+        image: 531144129/astrm:latest
+        ports:
+            - '8097:8080'
+```
+
 # 配置文件
 ```yaml
 debug: true # 是否启用 debug 模式，启用了日志比较多
