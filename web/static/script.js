@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ((key, job) => {
                         row.appendChild(createEditableCell(job, key, async newValue => {
                             let uri = `/api/job/${job.id}`
-                            job[key] = key === 'alist' ? parseInt(newValue, 10) : key === 'opts' ? JSON.parse(newValue) : newValue;
+                            job[key] =  (key === 'alist' || key === "concurrency") ? parseInt(newValue, 10) : key === 'opts' ? JSON.parse(newValue) : newValue;
                             let data = {};
                             data[key] = job[key];
                             await patchData(uri, data);
