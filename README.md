@@ -1,10 +1,33 @@
-# astrm
-`emby` 拓展工具，主要逻辑参考了 [MediaWarp](https://github.com/Akimio521/MediaWarp) 和 [AutoFilm](https://github.com/Akimio521/AutoFilm) 两个项目，相当于将二者功能合并，然后稍微新增了点功能
+[license]: /LICENSE
+[license-badge]: https://img.shields.io/github/license/KKKKKKKEM/astrm?style=flat-square&a=1
+[prs]: https://github.com/KKKKKKKEM/astrm
+[prs-badge]: https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square
+[issues]: https://github.com/KKKKKKKEM/astrm/issues/new
+[issues-badge]: https://img.shields.io/badge/Issues-welcome-brightgreen.svg?style=flat-square
+[release]: https://github.com/KKKKKKKEM/astrm/releases/latest
+[release-badge]: https://img.shields.io/github/v/release/KKKKKKKEM/astrm?style=flat-square
+[docker]: https://hub.docker.com/r/531144129/astrm
+[docker-badge]: https://img.shields.io/docker/pulls/531144129/astrm?color=%2348BB78&logo=docker&label=pulls
+
+
+
+<div align="center">
+    
+[![license][license-badge]][license]
+[![prs][prs-badge]][prs]
+[![issues][issues-badge]][issues]
+[![release][release-badge]][release]
+[![docker][docker-badge]][docker]
+
+</div>
+
+`astrm` 是 `emby` 的拓展工具，**前置于 EmbyServer 的 反向代理服务器**，主要逻辑参考了 [MediaWarp](https://github.com/Akimio521/MediaWarp) 和 [AutoFilm](https://github.com/Akimio521/AutoFilm) 两个项目，相当于将二者功能合并，然后稍微新增了点功能
 
 主要功能如下：
--  手动 / 自动将 `alist` 上的文件转为 `strm` 文件存到本地，方便扫库，降低风控 
--  代理 `emby` 服务器，完成直链 `302` 重定向服务 （不消耗emby服务器带宽）
--  提供 web 页面可视化管理 strm 文件生成和配置等
+- [x] 自动调度 `alist` 转 `strm` 文件任务，完成 `emby` 接入 `alist` 方案，避免挂载，方便扫库，降低风控 
+- [x] 反向代理 `emby` 服务器，完成直链 `302` 重定向服务 （不消耗emby服务器带宽）
+- [x] 提供 web 页面可视化管理 `strm` 文件生成任务和 `alist` 配置等
+- [x] 手动触发 `strm` 任务
 
 `docker` 部署
 ```bash
@@ -137,4 +160,4 @@ entrance: "enter"
 # 鸣谢
 - [MediaWarp](https://github.com/Akimio521/MediaWarp)
 - [AutoFilm](https://github.com/Akimio521/AutoFilm)
-- [cron]([https://github.com/Akimio521/AutoFilm](https://github.com/robfig/cron))
+- [cron](https://github.com/robfig/cron)
