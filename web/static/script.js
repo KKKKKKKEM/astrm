@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const formData = new FormData(document.getElementById('addItemForm'));
             const payload = {};
             formData.forEach((value, key) => {
-                payload[key] = key === 'opts' || key === 'spec' ? JSON.parse(value) : key === 'alist' ? parseInt(value, 10) : value;
+                payload[key] = key === 'opts' || key === 'spec' ? JSON.parse(value) : (key === 'alist' || key === "concurrency") ? parseInt(value, 10) : value;
 
             });
 
@@ -219,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
             jobs.forEach(job => {
                 const row = document.createElement('tr');
 
-                const keys = ["name", "from", "dest", "mode", "opts", "alist", "spec"];
+                const keys = ["name", "from", "dest", "mode", "opts", "alist", "spec", "concurrency"];
                 for (const key of keys) {
                     ((key, job) => {
                         row.appendChild(createEditableCell(job, key, async newValue => {
@@ -254,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('addJobBtn').addEventListener('click', () => {
-        showAddEditModal({}, null, ['name', 'from', 'dest', 'mode', 'opts', 'alist', 'spec'], 'job');
+        showAddEditModal({}, null, ['name', 'from', 'dest', 'mode', 'opts', 'alist', 'spec', "concurrency"], 'job');
     });
 
     loadTables();
