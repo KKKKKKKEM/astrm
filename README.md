@@ -42,6 +42,7 @@ alist:
 jobs:
   - name: 追更  # 任务的名称
     alist: 0 # alist 配置的索引，根据你上面的来
+    concurrency: 1 # 并发数，不建议调太大，否则网盘可能会风控
     
     # 从 alist 哪个目录下获取资源，一行一个目录
     from: |- 
@@ -73,9 +74,13 @@ jobs:
       # 是否重新覆盖已经生成了的文件
       overwrite: true
       # 过滤器，正则表达式，不写表示使用默认的视频格式
-      filters: (?i)^\.(mp4|avi|mkv|mov|webm|flv|wmv|3gp|mpeg|mpg)$
-      # 额外需要下载的文件过滤器，正则表达式，咱不支持（后面可能支持下载字幕/封面等）
-      extra: ""
+      filters: (?i)^\.(mp4|avi|mkv|mov|webm|flv|wmv|3gp|mpeg|mpg|ts|rmvb)$
+      
+      # 额外需要下载的文件过滤器，正则表达式（如果需要下载字幕/封面可以填）
+      # 元数据：nfo
+      # 字幕： srt/ass/sub/ssa/sub
+      # 封面： png/jpg
+      extra: (?i)^\.(nfo|ass|srt|ssa|sub|png|jpg)$
 
 # 需要代理的 emby 配置
 emby:

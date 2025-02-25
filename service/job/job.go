@@ -1,39 +1,75 @@
 package job
 
 import (
-	"astrm/utils"
-	"fmt"
 	"github.com/sirupsen/logrus"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type Opts struct {
 	Deep      int    `yaml:"deep" json:"deep"`
 	Overwrite bool   `yaml:"overwrite" json:"overwrite"`
 	Filters   string `yaml:"filters" json:"filters"`
+	Refresh   bool   `yaml:"refresh" json:"refresh"`
 	Extra     string `yaml:"extra" json:"extra"`
 }
 
 type SaveOpt struct {
 	*Opts
-	From    string
-	Dest    string
-	Name    string
-	Content []byte
+	From       string
+	Dest       string
+	Name       string
+	Body       io.Reader
+	ModifyTime time.Time
+}
+
+func (opt *SaveOpt) FmtSavePath() string {
+	fromDirs := strings.Split(opt.From, "/")
+	opt.Dest = strings.ReplaceAll(opt.Dest, "/", string(filepath.Separator))
+	destDirs := strings.Split(opt.Dest, string(filepath.Separator))
+	destDirs = append(destDirs, fromDirs[len(fromDirs)-opt.Deep:]...)
+	return filepath.Join(append(destDirs, strings.ReplaceAll(opt.Name, opt.From, ""))...)
+}
+
+func (opt *SaveOpt) IsWrite(savePath string, referenceTime time.Time) (state bool) {
+	if opt.Overwrite {
+		return true
+	}
+	// 获取文件状态信息
+	fileInfo, err := os.Stat(savePath)
+	if err != nil {
+		return true
+	}
+
+	// 获取修改时间
+	modTime := fileInfo.ModTime()
+	// 修改时间在参考时间之前，则返回 true
+	if referenceTime.After(modTime) {
+		return true
+	}
+
+	if fileInfo.Size() == 0 {
+		return true
+	}
+
+	return false
+
 }
 
 type Job struct {
-	Id      string  `yaml:"-" json:"id,omitempty"`
-	Name    string  `yaml:"name" json:"name,omitempty"`
-	Alist   int     `yaml:"alist" json:"alist"`
-	From    string  `yaml:"from" json:"from,omitempty"`
-	Dest    string  `yaml:"dest" json:"dest,omitempty"`
-	Mode    string  `yaml:"mode" json:"mode,omitempty"`
-	Spec    string  `yaml:"spec" json:"spec"`
-	Opts    Opts    `yaml:"opts" json:"opts"`
-	Handler Handler `yaml:"-" json:"-"`
+	Id          string  `yaml:"-" json:"id,omitempty"`
+	Name        string  `yaml:"name" json:"name,omitempty"`
+	Alist       int     `yaml:"alist" json:"alist"`
+	From        string  `yaml:"from" json:"from,omitempty"`
+	Dest        string  `yaml:"dest" json:"dest,omitempty"`
+	Mode        string  `yaml:"mode" json:"mode,omitempty"`
+	Spec        string  `yaml:"spec" json:"spec"`
+	Opts        Opts    `yaml:"opts" json:"opts"`
+	Handler     Handler `yaml:"-" json:"-"`
+	Concurrency int     `yaml:"concurrency" json:"concurrency"`
 }
 
 func (j Job) Run() {
@@ -46,31 +82,32 @@ func (j Job) Run() {
 }
 
 func Save(opt SaveOpt) (err error) {
-	fromDirs := strings.Split(opt.From, "/")
-	opt.Dest = strings.ReplaceAll(opt.Dest, "/", string(filepath.Separator))
-	destDirs := strings.Split(opt.Dest, string(filepath.Separator))
-	destDirs = append(destDirs, fromDirs[len(fromDirs)-opt.Deep:]...)
-	filePath := filepath.Join(append(destDirs, strings.ReplaceAll(opt.Name, opt.From, ""))...)
-	filePath = strings.ReplaceAll(filePath, filepath.Ext(filePath), ".strm")
-	if !opt.Overwrite && utils.Exists(filePath) {
+	filePath := opt.FmtSavePath()
+	if !opt.IsWrite(filePath, opt.ModifyTime) {
 		return
 	}
 	var file *os.File
 	dirName := filepath.Dir(filePath)
 	err = os.MkdirAll(dirName, os.ModePerm)
 	if err != nil {
-		fmt.Println("mkdir error: ", err)
+		logrus.Errorln("mkdir error: ", err)
 		return err
 	}
 
 	if file, err = os.Create(filePath); err != nil {
 		return
 	}
-
-	if _, err = file.Write(opt.Content); err != nil {
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
+	_, err = io.Copy(file, opt.Body)
+	if err != nil {
+		logrus.Errorln("Failed to save file:", err)
 		return
 	}
-	logrus.Print("save: ", filePath)
+
+	logrus.Infof("[Save] %s -> %s ", opt.From, filePath)
+
 	return
 
 }

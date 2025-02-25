@@ -15,7 +15,7 @@ import (
 var (
 	Cfg        *Storage
 	r          *gin.Engine
-	VideoRegex = `(?i)^\.(mp4|avi|mkv|mov|webm|flv|wmv|3gp|mpeg|mpg)$`
+	VideoRegex = `(?i)^\.(mp4|avi|mkv|mov|webm|flv|wmv|3gp|mpeg|mpg|ts|rmvb)$`
 )
 
 func setupCfg() (err error) {

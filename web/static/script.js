@@ -11,9 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchData(url) {
         const response = await fetch(url);
-        let result = await response.json();
-        showToast(result.msg);
-        return result
+        return await response.json();
     }
 
     async function postData(url, data) {

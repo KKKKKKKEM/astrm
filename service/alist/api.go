@@ -2,7 +2,10 @@ package alist
 
 import (
 	"astrm/service/job"
-	"astrm/utils"
+	"astrm/utils/concurrent"
+	"astrm/utils/iterator"
+	"astrm/utils/pandora"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/sirupsen/logrus"
@@ -12,6 +15,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 )
 
 type Server struct {
@@ -47,6 +51,8 @@ type Content struct {
 	Type     int64       `json:"type"`
 	Hashinfo string      `json:"hashinfo"`
 	HashInfo interface{} `json:"hash_info"`
+	Action   int         `json:"-"`
+	Endpoint string      `json:"endpoint"`
 }
 
 type FsGet struct {
@@ -76,67 +82,79 @@ func UnmarshalResponse(data []byte) (Result, error) {
 func (r *Result) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
+
 func (a *Server) Handle(j *job.Job) (err error) {
+	var pool *concurrent.Pool
+	if j.Concurrency >= 1 {
+		pool = concurrent.NewPool(j.Concurrency)
+	}
+
 	for _, from := range strings.Split(j.From, "\n") {
 		from = strings.TrimSpace(from)
 		if from == "" {
 			continue
 		}
-		list := a.FsList(from, true, j.Opts.Filters)
-		for content := range list {
-			o := job.SaveOpt{
-				Opts: &j.Opts,
-				From: from,
-				Dest: j.Dest,
-				Name: content.Name,
+		it := a.FsList(from, true, j.Opts)
+		for ct := range it.Iter() {
+			if ct.Error != nil {
+				err = ct.Error
+				logrus.Errorln(err)
+				continue
 			}
 
-			switch j.Mode {
-			case "raw_url":
-				if get, err := a.FsGet(content.Name); err != nil {
-					o.Content = []byte(get.RawURL)
-				} else {
-					logrus.Errorln(err)
+			content := ct.Content
+			o := job.SaveOpt{
+				Opts:       &j.Opts,
+				From:       from,
+				Dest:       j.Dest,
+				Name:       content.Name,
+				ModifyTime: content.ModifyTime(),
+			}
+
+			switch content.Action {
+			case 1:
+				var result *http.Response
+				result, err = a.Stream(content.DownloadUrl(), "GET", "", map[string]any{"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/133.0.0.0"})
+				if err != nil {
 					continue
 				}
+				o.Body = result.Body
 
-			case "alist_path":
-				o.Content = []byte(content.Name)
 			default:
-				r, _ := url.JoinPath(a.Endpoint, "/d/", content.Name)
-				if content.Sign != "" {
-					r = r + "?sign=" + content.Sign
+				o.Name = strings.ReplaceAll(o.Name, filepath.Ext(o.Name), ".strm")
+				// alist -> strm
+				switch j.Mode {
+				case "raw_url":
+					if get, err := a.FsGet(content.Name); err == nil {
+						o.Body = strings.NewReader(get.RawURL)
+					} else {
+						logrus.Errorln(err)
+						continue
+					}
+
+				case "alist_path":
+					o.Body = strings.NewReader(content.Name)
+				default:
+					o.Body = strings.NewReader(content.DownloadUrl())
 				}
-				o.Content = []byte(r)
 			}
-			if err = job.Save(o); err != nil {
-				logrus.Errorln("[Save Error] %v", err)
+
+			if pool != nil {
+				pool.Submit(job.Save, o)
+			} else {
+				_ = job.Save(o)
 			}
 		}
+	}
+	if pool != nil {
+		pool.Shutdown()
 	}
 	return
 }
 
-func (a *Server) sendRequest(uri, method, data string) (result Result, err error) {
-	var (
-		u       string
-		payload *strings.Reader
-	)
-	u, err = url.JoinPath(a.Endpoint, uri)
-	if err != nil {
-		err = fmt.Errorf("uri: %s, err: %s", uri, err.Error())
-		return
-	}
-	if data != "" {
-		payload = strings.NewReader(data)
-	}
-	req, _ := http.NewRequest(method, u, payload)
-
-	req.Header.Add("content-type", "application/json")
-	req.Header.Add("Accept", "application/json, text/plain, */*")
-	req.Header.Add("Authorization", a.Token)
+func (a *Server) Json(uri, method, data string, headers map[string]any) (result Result, err error) {
 	var res *http.Response
-	res, err = http.DefaultClient.Do(req)
+	res, err = a.Stream(uri, method, data, headers)
 	if err != nil {
 		err = fmt.Errorf("uri: %s, err: %s", uri, err.Error())
 		return
@@ -149,7 +167,8 @@ func (a *Server) sendRequest(uri, method, data string) (result Result, err error
 	defer func(Body io.ReadCloser) {
 		_ = Body.Close()
 	}(res.Body)
-	body, _ := io.ReadAll(res.Body)
+	var body []byte
+	body, err = io.ReadAll(res.Body)
 	result, err = UnmarshalResponse(body)
 	if err != nil {
 		err = fmt.Errorf("uri: %s, err: %v", uri, err)
@@ -163,22 +182,72 @@ func (a *Server) sendRequest(uri, method, data string) (result Result, err error
 	return
 }
 
-func (a *Server) FsList(path string, recursion bool, filter string) (res <-chan Content) {
+func (a *Server) Stream(uri, method, data string, headers map[string]any) (res *http.Response, err error) {
+	var u string
+	if !strings.HasPrefix(uri, a.Endpoint) {
+		u, err = url.JoinPath(a.Endpoint, uri)
+		if err != nil {
+			err = fmt.Errorf("uri: %s, err: %s", uri, err.Error())
+			return
+		}
+	} else {
+		u = uri
+	}
 
-	gen := func(pending []string, recursion bool, filter func(path string) bool, c chan<- Content) {
-		defer close(c)
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// 去掉referer，不然可能会失败
+			req.Header.Del("Referer")
+			return nil
+		},
+	}
+
+	var req *http.Request
+	if data != "" {
+		req, err = http.NewRequest(method, u, strings.NewReader(data))
+	} else {
+		req, err = http.NewRequest(method, u, nil)
+	}
+	if err != nil {
+		err = fmt.Errorf("uri: %s, err: %s", uri, err.Error())
+		return
+	}
+
+	for key, value := range headers {
+		req.Header.Add(key, fmt.Sprintf("%v", value))
+	}
+	req.Header.Add("Authorization", a.Token)
+	res, err = client.Do(req)
+	return
+}
+
+func (a *Server) FsList(path string, recursion bool, opts job.Opts) (res *iterator.Iterator[*Content]) {
+
+	filterRegex := regexp.MustCompile(opts.Filters)
+	var extraFunc func(p string) bool
+	if opts.Extra != "" {
+		extraRegex := regexp.MustCompile(opts.Extra)
+		extraFunc = func(p string) bool { return extraRegex.MatchString(filepath.Ext(p)) }
+	}
+	filterFunc := func(p string) bool { return filterRegex.MatchString(filepath.Ext(p)) }
+
+	return iterator.Make(func(ctx context.Context, ch chan<- iterator.Data[*Content]) {
+		pending := []string{path}
 		for len(pending) > 0 {
 			path := pending[0]
 			pending = pending[1:]
-			data := fmt.Sprintf(`{"path":"%s","password":"","page":1,"per_page":0,"refresh":true}`, path)
-			result, err := a.sendRequest("api/fs/list", "POST", data)
+			data := fmt.Sprintf(`{"path":"%s","password":"","page":1,"per_page":0,"refresh":%t}`, path, opts.Refresh)
+			result, err := a.Json("api/fs/list", "POST", data, map[string]any{"Content-Type": "application/json"})
 			if err != nil {
-				logrus.Errorln("[FsList Error] path: %s, %v", path, err)
+				err = fmt.Errorf("[FsList Error] path: %s, %v", path, err)
+				ch <- iterator.Data[*Content]{Error: err}
 				return
 			}
 
 			var fsList FsList
-			if err = utils.MapToStruct(result.Data, &fsList); err != nil {
+			if err = pandora.MapToStructWithJson(result.Data, &fsList); err != nil {
+				ch <- iterator.Data[*Content]{Error: err}
 				return
 			}
 
@@ -187,37 +256,56 @@ func (a *Server) FsList(path string, recursion bool, filter string) (res <-chan 
 			}
 
 			for _, content := range fsList.Content {
+				content.Endpoint = a.Endpoint
 				content.Name = strings.Join([]string{path, content.Name}, "/")
 				if recursion && content.IsDir {
 					pending = append(pending, content.Name)
-				} else if filter != nil && filter(content.Name) {
-					c <- content
+				} else if filterFunc != nil && filterFunc(content.Name) {
+					ch <- iterator.Data[*Content]{Content: &content}
+				} else if extraFunc != nil && extraFunc(content.Name) {
+					content.Action = 1
+					ch <- iterator.Data[*Content]{Content: &content}
 				}
+
 			}
 		}
-	}
-	iterChan := make(chan Content, 100)
-	var filterRegex *regexp.Regexp
-	filterRegex = regexp.MustCompile(filter)
-	filterFunc := func(p string) bool { return filterRegex.MatchString(filepath.Ext(p)) }
-	go gen([]string{path}, recursion, filterFunc, iterChan)
-	return iterChan
+
+	})
 
 }
 
 func (a *Server) FsGet(path string) (content FsGet, err error) {
 	var result Result
 	data := fmt.Sprintf(`{"path":"%s","password":""}`, path)
-	result, err = a.sendRequest("api/fs/get", "POST", data)
+	result, err = a.Json("api/fs/get", "POST", data, map[string]any{"Content-Type": "application/json"})
 	if err != nil {
 		err = fmt.Errorf("[FsGet Error] path: %s, %v", path, err)
 		return
 	}
 
-	if err = utils.MapToStruct(result.Data, &content); err != nil {
+	if err = pandora.MapToStructWithJson(result.Data, &content); err != nil {
 		return
 	}
 	content.Name = path
 	return
 
+}
+
+func (c Content) DownloadUrl() (r string) {
+	r, _ = url.JoinPath(c.Endpoint, "/d/", c.Name)
+	if c.Sign != "" {
+		r = r + "?sign=" + c.Sign
+	}
+	return
+}
+
+func (c Content) ProxyDownloadUrl() (r string) {
+	return strings.Replace(c.DownloadUrl(), "/d/", "/p/", 1)
+}
+
+func (c Content) ModifyTime() (t time.Time) {
+	layout := "2006-01-02T15:04:05.999Z"
+	// 解析时间字符串
+	t, _ = time.Parse(layout, c.Modified)
+	return
 }
