@@ -86,7 +86,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function showToast(message) {
         const toastBody = document.querySelector('#liveToast .toast-body');
         toastBody.textContent = message;
-        const toast = new bootstrap.Toast(document.getElementById('liveToast'));
+        const toast = new bootstrap.Toast(
+            document.getElementById('liveToast'),
+            {
+                autohide: true, // 自动隐藏
+                delay: 1000     // 显示3秒后自动隐藏
+            }
+        );
         toast.show();
     }
 
@@ -224,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ((key, job) => {
                         row.appendChild(createEditableCell(job, key, async newValue => {
                             let uri = `/api/job/${job.id}`
-                            job[key] =  (key === 'alist' || key === "concurrency") ? parseInt(newValue, 10) : key === 'opts' ? JSON.parse(newValue) : newValue;
+                            job[key] = (key === 'alist' || key === "concurrency") ? parseInt(newValue, 10) : key === 'opts' ? JSON.parse(newValue) : newValue;
                             let data = {};
                             data[key] = job[key];
                             await patchData(uri, data);
