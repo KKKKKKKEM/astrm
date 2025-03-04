@@ -85,9 +85,43 @@ func (r *Result) Marshal() ([]byte, error) {
 
 func (a *Server) Handle(j *job.Job) (err error) {
 	var pool *concurrent.Pool
-	if j.Concurrency >= 1 {
-		pool = concurrent.NewPool(j.Concurrency)
+
+	process := func(content *Content, o *job.SaveOpt) {
+		switch content.Action {
+		case 1:
+			var result *http.Response
+			result, err = a.Stream(content.DownloadUrl(), "GET", "", map[string]any{"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/133.0.0.0"})
+			if err != nil {
+				return
+			}
+			o.Body = result.Body
+
+		default:
+			o.Name = strings.ReplaceAll(o.Name, filepath.Ext(o.Name), ".strm")
+			// alist -> strm
+			switch j.Mode {
+			case "raw_url":
+				if get, err := a.FsGet(content.Name); err == nil {
+					o.Body = strings.NewReader(get.RawURL)
+				} else {
+					logrus.Errorln(err)
+					return
+				}
+
+			case "alist_path":
+				o.Body = strings.NewReader(content.Name)
+			default:
+				o.Body = strings.NewReader(content.DownloadUrl())
+			}
+		}
+		_ = job.Save(*o)
+
 	}
+
+	if j.Concurrency < 1 {
+		j.Concurrency = 1
+	}
+	pool = concurrent.NewPool(j.Concurrency)
 
 	for _, from := range strings.Split(j.From, "\n") {
 		from = strings.TrimSpace(from)
@@ -103,47 +137,15 @@ func (a *Server) Handle(j *job.Job) (err error) {
 			}
 
 			content := ct.Content
-			o := job.SaveOpt{
+			o := &job.SaveOpt{
 				Opts:       &j.Opts,
 				From:       from,
 				Dest:       j.Dest,
 				Name:       content.Name,
 				ModifyTime: content.ModifyTime(),
 			}
+			pool.Submit(process, content, o)
 
-			switch content.Action {
-			case 1:
-				var result *http.Response
-				result, err = a.Stream(content.DownloadUrl(), "GET", "", map[string]any{"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/133.0.0.0"})
-				if err != nil {
-					continue
-				}
-				o.Body = result.Body
-
-			default:
-				o.Name = strings.ReplaceAll(o.Name, filepath.Ext(o.Name), ".strm")
-				// alist -> strm
-				switch j.Mode {
-				case "raw_url":
-					if get, err := a.FsGet(content.Name); err == nil {
-						o.Body = strings.NewReader(get.RawURL)
-					} else {
-						logrus.Errorln(err)
-						continue
-					}
-
-				case "alist_path":
-					o.Body = strings.NewReader(content.Name)
-				default:
-					o.Body = strings.NewReader(content.DownloadUrl())
-				}
-			}
-
-			if pool != nil {
-				pool.Submit(job.Save, o)
-			} else {
-				_ = job.Save(o)
-			}
 		}
 	}
 	if pool != nil {
