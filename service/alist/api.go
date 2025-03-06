@@ -244,17 +244,17 @@ func (a *Server) FsList(path string, recursion bool, opts job.Opts) (res *iterat
 			if err != nil {
 				err = fmt.Errorf("[FsList Error] path: %s, %v", path, err)
 				ch <- iterator.Data[*Content]{Error: err}
-				return
+				continue
 			}
 
 			var fsList FsList
 			if err = pandora.MapToStructWithJson(result.Data, &fsList); err != nil {
 				ch <- iterator.Data[*Content]{Error: err}
-				return
+				continue
 			}
 
 			if total := fsList.Total; total == 0 {
-				return
+				continue
 			}
 
 			for _, content := range fsList.Content {

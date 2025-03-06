@@ -16,15 +16,15 @@ func admin(c *gin.Context) {
 		return
 	}
 
-	if bytes, err := fs.ReadFile(web.StaticFiles, "admin.html"); err != nil {
+	if bytes, err := fs.ReadFile(web.Web, "admin.html"); err != nil {
 		return
 	} else {
-		c.Data(http.StatusForbidden, "text/html; charset=utf-8", bytes)
+		c.Data(http.StatusOK, "text/html; charset=utf-8", bytes)
 	}
 }
 
 func enter(c *gin.Context) {
-	if bytes, err := fs.ReadFile(web.StaticFiles, "403.html"); err != nil {
+	if bytes, err := fs.ReadFile(web.Web, "403.html"); err != nil {
 		return
 	} else {
 		c.Data(http.StatusForbidden, "text/html; charset=utf-8", bytes)
