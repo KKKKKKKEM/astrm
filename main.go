@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	configPath = *flag.String("config", "conf/conf.yaml", "config file path")
+	configPath = flag.String("config", "conf/conf.yaml", "config file path")
 )
 
 func init() {
@@ -15,7 +15,7 @@ func init() {
 }
 
 func main() {
-	server.Init(configPath)
+	server.Init(*configPath)
 	modules.Init()
 	server.Run()
 }

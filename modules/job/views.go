@@ -13,7 +13,7 @@ func list(c *gin.Context) {
 }
 
 func create(c *gin.Context) {
-	var item = job.Job{Id: uuid.NewString()}
+	var item = job.Job{Id: uuid.NewString(), Opts: job.Opts{Refresh: true}}
 	if err := c.ShouldBindJSON(&item); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -26,7 +26,7 @@ func create(c *gin.Context) {
 		c.JSON(http.StatusCreated, gin.H{"code": 0, "msg": "success", "data": item})
 	}
 }
-func delete(c *gin.Context) {
+func del(c *gin.Context) {
 	jobId := c.Param("id")
 	if idx, thisJob := server.Cfg.FindJob(&job.Job{Id: jobId}); idx != -1 {
 		err := server.Cfg.UnRegisterJob(thisJob)

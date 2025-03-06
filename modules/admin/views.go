@@ -2,8 +2,10 @@ package admin
 
 import (
 	"astrm/server"
+	"astrm/web"
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
+	"io/fs"
 	"net/http"
 )
 
@@ -13,11 +15,20 @@ func admin(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/admin")
 		return
 	}
-	c.HTML(http.StatusOK, "admin.html", gin.H{})
+
+	if bytes, err := fs.ReadFile(web.StaticFiles, "admin.html"); err != nil {
+		return
+	} else {
+		c.Data(http.StatusForbidden, "text/html; charset=utf-8", bytes)
+	}
 }
 
 func enter(c *gin.Context) {
-	c.HTML(http.StatusForbidden, "403.html", gin.H{})
+	if bytes, err := fs.ReadFile(web.StaticFiles, "403.html"); err != nil {
+		return
+	} else {
+		c.Data(http.StatusForbidden, "text/html; charset=utf-8", bytes)
+	}
 }
 func cfg(c *gin.Context) {
 	entrance := c.Param("entrance")

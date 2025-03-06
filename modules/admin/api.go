@@ -1,11 +1,14 @@
 package admin
 
-import "astrm/server"
+import (
+	"astrm/server"
+	"astrm/web"
+	"net/http"
+)
 
 func Init() {
 	r := server.GetApp()
-	r.LoadHTMLFiles("web/admin.html", "web/403.html")
-	r.Static("/admin/static", "web/static")
+	r.StaticFS("/admin/static", http.FS(web.StaticFiles))
 	r.GET("/admin/:entrance", admin)
 	r.GET("/admin/:entrance/cfg", cfg)
 	r.GET("/admin", enter)
