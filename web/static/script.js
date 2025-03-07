@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const cell = document.createElement('td');
         cell.classList.add('editable');
         let value = obj[key];
-        value = typeof value === 'object' ? JSON.stringify(value) : value;
+        value = typeof value === 'object' ? JSON.stringify(value, null, 2) : value;
 
         const span = document.createElement('span');
         span.textContent = value;
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
             editor.destroy();
         }
         let value = obj[key];
-        value = typeof value === 'object' ? JSON.stringify(value) : value
+        value = typeof value === 'object' ? JSON.stringify(value, null, 2) : value
         let tag = document.querySelector('#editModalLabel')
         tag.innerHTML = `Edit ${key}`
         tag.innerText = `Edit ${key}`
