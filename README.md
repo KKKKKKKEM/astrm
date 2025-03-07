@@ -104,7 +104,11 @@ jobs:
       # 字幕： srt/ass/sub/ssa/sub
       # 封面： png/jpg
       extra: (?i)^\.(nfo|ass|srt|ssa|sub|png|jpg)$
-
+      # 是否强制刷新 alist
+      refresh: true
+      # alist 发送请求间隔(防止网盘风控), 设置为0表示不限制
+      interval: 1
+      
 # 需要代理的 emby 配置
 emby:
   addr: http://youremby.com # emby服务端

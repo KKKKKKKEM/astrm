@@ -13,7 +13,7 @@ func list(c *gin.Context) {
 }
 
 func create(c *gin.Context) {
-	var item = job.Job{Id: uuid.NewString(), Opts: job.Opts{Refresh: true}}
+	var item = job.Job{Id: uuid.NewString()}
 	if err := c.ShouldBindJSON(&item); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

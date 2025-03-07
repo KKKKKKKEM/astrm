@@ -175,7 +175,7 @@ func (embyServerHandler *EmbyServerHandler) ModifyPlaybackInfo(rw *http.Response
 
 			if playbackInfoResponse.MediaSources[index].Size == nil {
 				alistServer := server.Cfg.Alist[server.Cfg.Emby.AlistStrm[idx].Alist]
-				fsGetData, err := alistServer.FsGet(*mediasource.Path)
+				fsGetData, err := alistServer.FsGet(*mediasource.Path, nil)
 				if err != nil {
 					logrus.Errorln("请求 FsGet 失败：", err)
 					continue
@@ -265,7 +265,7 @@ func (embyServerHandler *EmbyServerHandler) VideosHandler(ctx *gin.Context) {
 				return
 			case AlistStrm: // 无需判断 *mediasource.Container 是否以Strm结尾，当 AlistStrm 存储的位置有对应的文件时，*mediasource.Container 会被设置为文件后缀
 				alistServer := server.Cfg.Alist[server.Cfg.Emby.AlistStrm[idx].Alist]
-				fsGetData, err := alistServer.FsGet(*mediasource.Path)
+				fsGetData, err := alistServer.FsGet(*mediasource.Path, nil)
 				if err != nil {
 					logrus.Errorln("请求 FsGet 失败：", err)
 					return

@@ -10,11 +10,13 @@ import (
 )
 
 type Opts struct {
-	Deep      int    `yaml:"deep" json:"deep"`
-	Overwrite bool   `yaml:"overwrite" json:"overwrite"`
-	Filters   string `yaml:"filters" json:"filters"`
-	Refresh   bool   `yaml:"refresh" json:"refresh"`
-	Extra     string `yaml:"extra" json:"extra"`
+	Deep      int              `yaml:"deep" json:"deep"`
+	Overwrite bool             `yaml:"overwrite" json:"overwrite"`
+	Filters   string           `yaml:"filters" json:"filters"`
+	Refresh   bool             `yaml:"refresh" json:"refresh"`
+	Extra     string           `yaml:"extra" json:"extra"`
+	Interval  float64          `yaml:"interval" json:"interval"`
+	C         <-chan time.Time `yaml:"-" json:"-"`
 }
 
 type SaveOpt struct {
@@ -67,17 +69,19 @@ type Job struct {
 	Dest        string  `yaml:"dest" json:"dest,omitempty"`
 	Mode        string  `yaml:"mode" json:"mode,omitempty"`
 	Spec        string  `yaml:"spec" json:"spec"`
-	Opts        Opts    `yaml:"opts" json:"opts"`
+	Opts        *Opts   `yaml:"opts" json:"opts"`
 	Handler     Handler `yaml:"-" json:"-"`
 	Concurrency int     `yaml:"concurrency" json:"concurrency"`
 }
 
 func (j Job) Run() {
+	logrus.Printf("[start] job name: %s, job id: %s\n", j.Name, j.Id)
 	err := j.Handler.Handle(&j)
 	if err != nil {
-		logrus.Printf("error running job, job name: %s, job id: %s, err: %v\n", j.Name, j.Id, err)
+		logrus.Printf("[failed] job name: %s, job id: %s, err: %v\n", j.Name, j.Id, err)
 		return
 	}
+	logrus.Printf("[success] job name: %s, job id: %s\n", j.Name, j.Id)
 
 }
 

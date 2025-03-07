@@ -86,11 +86,24 @@ func (r *Result) Marshal() ([]byte, error) {
 func (a *Server) Handle(j *job.Job) (err error) {
 	var pool *concurrent.Pool
 
+	if j.Opts.Interval != 0 {
+		ticker := time.NewTicker(time.Duration(j.Opts.Interval) * time.Second)
+		j.Opts.C = ticker.C
+		defer ticker.Stop()
+	}
+
 	process := func(content *Content, o *job.SaveOpt) {
 		switch content.Action {
 		case 1:
+			// 获取内容
 			var result *http.Response
-			result, err = a.Stream(content.DownloadUrl(), "GET", "", map[string]any{"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/133.0.0.0"})
+			result, err = a.Stream(
+				content.DownloadUrl(),
+				"GET",
+				"",
+				map[string]any{"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/133.0.0.0"},
+				j.Opts.C,
+			)
 			if err != nil {
 				return
 			}
@@ -101,7 +114,8 @@ func (a *Server) Handle(j *job.Job) (err error) {
 			// alist -> strm
 			switch j.Mode {
 			case "raw_url":
-				if get, err := a.FsGet(content.Name); err == nil {
+				// 获取 raw url
+				if get, err := a.FsGet(content.Name, j.Opts.C); err == nil {
 					o.Body = strings.NewReader(get.RawURL)
 				} else {
 					logrus.Errorln(err)
@@ -138,7 +152,7 @@ func (a *Server) Handle(j *job.Job) (err error) {
 
 			content := ct.Content
 			o := &job.SaveOpt{
-				Opts:       &j.Opts,
+				Opts:       j.Opts,
 				From:       from,
 				Dest:       j.Dest,
 				Name:       content.Name,
@@ -154,9 +168,9 @@ func (a *Server) Handle(j *job.Job) (err error) {
 	return
 }
 
-func (a *Server) Json(uri, method, data string, headers map[string]any) (result Result, err error) {
+func (a *Server) Json(uri, method, data string, headers map[string]any, c <-chan time.Time) (result Result, err error) {
 	var res *http.Response
-	res, err = a.Stream(uri, method, data, headers)
+	res, err = a.Stream(uri, method, data, headers, c)
 	if err != nil {
 		err = fmt.Errorf("uri: %s, err: %s", uri, err.Error())
 		return
@@ -184,7 +198,11 @@ func (a *Server) Json(uri, method, data string, headers map[string]any) (result 
 	return
 }
 
-func (a *Server) Stream(uri, method, data string, headers map[string]any) (res *http.Response, err error) {
+func (a *Server) Stream(uri, method, data string, headers map[string]any, c <-chan time.Time) (res *http.Response, err error) {
+	//并发控制
+	if c != nil {
+		<-c
+	}
 	var u string
 	if !strings.HasPrefix(uri, a.Endpoint) {
 		u, err = url.JoinPath(a.Endpoint, uri)
@@ -224,7 +242,7 @@ func (a *Server) Stream(uri, method, data string, headers map[string]any) (res *
 	return
 }
 
-func (a *Server) FsList(path string, recursion bool, opts job.Opts) (res *iterator.Iterator[*Content]) {
+func (a *Server) FsList(path string, recursion bool, opts *job.Opts) (res *iterator.Iterator[*Content]) {
 
 	filterRegex := regexp.MustCompile(opts.Filters)
 	var extraFunc func(p string) bool
@@ -240,7 +258,7 @@ func (a *Server) FsList(path string, recursion bool, opts job.Opts) (res *iterat
 			path := pending[0]
 			pending = pending[1:]
 			data := fmt.Sprintf(`{"path":"%s","password":"","page":1,"per_page":0,"refresh":%t}`, path, opts.Refresh)
-			result, err := a.Json("api/fs/list", "POST", data, map[string]any{"Content-Type": "application/json"})
+			result, err := a.Json("api/fs/list", "POST", data, map[string]any{"Content-Type": "application/json"}, opts.C)
 			if err != nil {
 				err = fmt.Errorf("[FsList Error] path: %s, %v", path, err)
 				ch <- iterator.Data[*Content]{Error: err}
@@ -276,10 +294,10 @@ func (a *Server) FsList(path string, recursion bool, opts job.Opts) (res *iterat
 
 }
 
-func (a *Server) FsGet(path string) (content FsGet, err error) {
+func (a *Server) FsGet(path string, c <-chan time.Time) (content FsGet, err error) {
 	var result Result
 	data := fmt.Sprintf(`{"path":"%s","password":""}`, path)
-	result, err = a.Json("api/fs/get", "POST", data, map[string]any{"Content-Type": "application/json"})
+	result, err = a.Json("api/fs/get", "POST", data, map[string]any{"Content-Type": "application/json"}, c)
 	if err != nil {
 		err = fmt.Errorf("[FsGet Error] path: %s, %v", path, err)
 		return
