@@ -85,10 +85,12 @@ func (r *Result) Marshal() ([]byte, error) {
 
 func (a *Server) Handle(j *job.Job) (err error) {
 	var pool *concurrent.Pool
+	ctx := context.TODO()
 
 	if j.Opts.Interval != 0 {
 		ticker := time.NewTicker(time.Duration(j.Opts.Interval) * time.Second)
-		j.Opts.C = ticker.C
+		ctx = context.WithValue(ctx, "i-lock", ticker.C)
+		ctx = context.WithValue(ctx, "interval", j.Opts.Interval)
 		defer ticker.Stop()
 	}
 
@@ -98,11 +100,11 @@ func (a *Server) Handle(j *job.Job) (err error) {
 			// 获取内容
 			var result *http.Response
 			result, err = a.Stream(
+				ctx,
 				content.DownloadUrl(),
 				"GET",
 				"",
 				map[string]any{"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/133.0.0.0"},
-				j.Opts.C,
 			)
 			if err != nil {
 				return
@@ -115,7 +117,7 @@ func (a *Server) Handle(j *job.Job) (err error) {
 			switch j.Mode {
 			case "raw_url":
 				// 获取 raw url
-				if get, err := a.FsGet(content.Name, j.Opts.C); err == nil {
+				if get, err := a.FsGet(ctx, content.Name); err == nil {
 					o.Body = strings.NewReader(get.RawURL)
 				} else {
 					logrus.Errorln(err)
@@ -142,7 +144,7 @@ func (a *Server) Handle(j *job.Job) (err error) {
 		if from == "" {
 			continue
 		}
-		it := a.FsList(from, true, j.Opts)
+		it := a.FsList(ctx, from, true, j.Opts)
 		for ct := range it.Iter() {
 			if ct.Error != nil {
 				err = ct.Error
@@ -168,9 +170,9 @@ func (a *Server) Handle(j *job.Job) (err error) {
 	return
 }
 
-func (a *Server) Json(uri, method, data string, headers map[string]any, c <-chan time.Time) (result Result, err error) {
+func (a *Server) Json(ctx context.Context, uri, method, data string, headers map[string]any) (result Result, err error) {
 	var res *http.Response
-	res, err = a.Stream(uri, method, data, headers, c)
+	res, err = a.Stream(ctx, uri, method, data, headers)
 	if err != nil {
 		err = fmt.Errorf("uri: %s, err: %s", uri, err.Error())
 		return
@@ -198,11 +200,8 @@ func (a *Server) Json(uri, method, data string, headers map[string]any, c <-chan
 	return
 }
 
-func (a *Server) Stream(uri, method, data string, headers map[string]any, c <-chan time.Time) (res *http.Response, err error) {
-	//并发控制
-	if c != nil {
-		<-c
-	}
+func (a *Server) Stream(ctx context.Context, uri, method, data string, headers map[string]any) (res *http.Response, err error) {
+
 	var u string
 	if !strings.HasPrefix(uri, a.Endpoint) {
 		u, err = url.JoinPath(a.Endpoint, uri)
@@ -238,11 +237,18 @@ func (a *Server) Stream(uri, method, data string, headers map[string]any, c <-ch
 		req.Header.Add(key, fmt.Sprintf("%v", value))
 	}
 	req.Header.Add("Authorization", a.Token)
+
+	//并发控制
+	if ctx.Value("interval") != nil {
+		fmt.Printf("[wait] %v s, data: %s\n", ctx.Value("interval"), data)
+		<-ctx.Value("i-lock").(<-chan time.Time)
+	}
+
 	res, err = client.Do(req)
 	return
 }
 
-func (a *Server) FsList(path string, recursion bool, opts *job.Opts) (res *iterator.Iterator[*Content]) {
+func (a *Server) FsList(ctx context.Context, path string, recursion bool, opts *job.Opts) (res *iterator.Iterator[*Content]) {
 
 	filterRegex := regexp.MustCompile(opts.Filters)
 	var extraFunc func(p string) bool
@@ -252,13 +258,13 @@ func (a *Server) FsList(path string, recursion bool, opts *job.Opts) (res *itera
 	}
 	filterFunc := func(p string) bool { return filterRegex.MatchString(filepath.Ext(p)) }
 
-	return iterator.Make(func(ctx context.Context, ch chan<- iterator.Data[*Content]) {
+	return iterator.Make(func(c context.Context, ch chan<- iterator.Data[*Content]) {
 		pending := []string{path}
 		for len(pending) > 0 {
 			path := pending[0]
 			pending = pending[1:]
 			data := fmt.Sprintf(`{"path":"%s","password":"","page":1,"per_page":0,"refresh":%t}`, path, opts.Refresh)
-			result, err := a.Json("api/fs/list", "POST", data, map[string]any{"Content-Type": "application/json"}, opts.C)
+			result, err := a.Json(ctx, "api/fs/list", "POST", data, map[string]any{"Content-Type": "application/json"})
 			if err != nil {
 				err = fmt.Errorf("[FsList Error] path: %s, %v", path, err)
 				ch <- iterator.Data[*Content]{Error: err}
@@ -294,10 +300,10 @@ func (a *Server) FsList(path string, recursion bool, opts *job.Opts) (res *itera
 
 }
 
-func (a *Server) FsGet(path string, c <-chan time.Time) (content FsGet, err error) {
+func (a *Server) FsGet(ctx context.Context, path string) (content FsGet, err error) {
 	var result Result
 	data := fmt.Sprintf(`{"path":"%s","password":""}`, path)
-	result, err = a.Json("api/fs/get", "POST", data, map[string]any{"Content-Type": "application/json"}, c)
+	result, err = a.Json(ctx, "api/fs/get", "POST", data, map[string]any{"Content-Type": "application/json"})
 	if err != nil {
 		err = fmt.Errorf("[FsGet Error] path: %s, %v", path, err)
 		return
