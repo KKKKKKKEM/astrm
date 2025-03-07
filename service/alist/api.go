@@ -107,9 +107,13 @@ func (a *Server) Handle(j *job.Job) (err error) {
 				map[string]any{"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/133.0.0.0"},
 			)
 			if err != nil {
+				logrus.Errorln(err)
 				return
 			}
 			o.Body = result.Body
+			defer func(Body io.ReadCloser) {
+				_ = Body.Close()
+			}(result.Body)
 
 		default:
 			o.Name = strings.ReplaceAll(o.Name, filepath.Ext(o.Name), ".strm")
@@ -130,7 +134,11 @@ func (a *Server) Handle(j *job.Job) (err error) {
 				o.Body = strings.NewReader(content.DownloadUrl())
 			}
 		}
-		_ = job.Save(*o)
+		err = job.Save(*o)
+		if err != nil {
+			logrus.Errorln(err)
+			return
+		}
 
 	}
 
@@ -177,6 +185,9 @@ func (a *Server) Json(ctx context.Context, uri, method, data string, headers map
 		err = fmt.Errorf("uri: %s, err: %s", uri, err.Error())
 		return
 	}
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(res.Body)
 
 	if res.StatusCode != 200 {
 		err = fmt.Errorf("uri: %s, status code: %d", uri, res.StatusCode)

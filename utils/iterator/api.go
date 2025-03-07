@@ -14,7 +14,7 @@ type Iterator[T any] struct {
 
 func Make[T any](do func(ctx context.Context, ch chan<- Data[T])) *Iterator[T] {
 	ctx, cancel := context.WithCancel(context.Background())
-	ch := make(chan Data[T], 100)
+	ch := make(chan Data[T], 1)
 	go func() {
 		defer close(ch)
 		do(ctx, ch)

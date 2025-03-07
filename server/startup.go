@@ -47,7 +47,7 @@ func setupHttpServer() {
 
 func setupLog() {
 	logrus.SetOutput(os.Stdout)
-	logrus.SetFormatter(&logrus.JSONFormatter{})
+	//logrus.SetFormatter(&logrus.JSONFormatter{})
 	if Cfg.Debug {
 		logrus.SetLevel(logrus.DebugLevel)
 	} else {
