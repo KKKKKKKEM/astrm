@@ -31,6 +31,6 @@ RUN chmod +x ./astrm
 # 暴露应用运行所需的端口（如果有的话）
 EXPOSE 8080
 COPY conf /conf
-COPY web /web
+#COPY web /web
 # 运行可执行文件
 CMD ["./astrm"]
