@@ -125,7 +125,7 @@ func (embyServerHandler *EmbyServerHandler) ModifyPlaybackInfo(rw *http.Response
 	}
 	for index, mediasource := range playbackInfoResponse.MediaSources {
 		itemResponse, err := embyServerHandler.server.ItemsServiceQueryItem(strings.Replace(*mediasource.ID, "mediasource_", "", 1), 1, "Path,MediaSources") // 查询 item 需要去除前缀仅保留数字部分
-		if err != nil {
+		if err != nil || len(itemResponse.Items) == 0 {
 			logrus.Errorln("请求 ItemsServiceQueryItem 失败：", err)
 			continue
 		}
@@ -229,7 +229,7 @@ func (embyServerHandler *EmbyServerHandler) VideosHandler(ctx *gin.Context) {
 
 	logrus.Debugln("请求 ItemsServiceQueryItem：", mediaSourceID)
 	itemResponse, err := embyServerHandler.server.ItemsServiceQueryItem(strings.Replace(mediaSourceID, "mediasource_", "", 1), 1, "Path,MediaSources") // 查询 item 需要去除前缀仅保留数字部分
-	if err != nil {
+	if err != nil || len(itemResponse.Items) == 0 {
 		logrus.Debugln("请求 ItemsServiceQueryItem 失败：", err)
 		embyServerHandler.server.ReverseProxy(ctx.Writer, ctx.Request)
 		return
