@@ -32,7 +32,7 @@
 `docker` 部署
 ```bash
 
-docker run -d --name astrm  -v ./config:/config -v ./media:/media -v ./logs:/logs 531144129/astrm -p 8097:8080
+docker run -d --name astrm  -v ./conf:/conf -v ./media:/media -v ./logs:/logs 531144129/astrm -p 8097:8080
 ```
 
 `docker-compose` 部署
@@ -41,7 +41,7 @@ version: "3"
 services:
     astrm:
         volumes:
-            - /config:/config # 初始化配置映射，配置文件名为 conf.yaml
+            - /conf:/conf # 初始化配置映射，配置文件名为 conf.yaml
             - /media:/media # 媒体库，就是strm文件存储的路径映射
             - /logs:/logs # 日志存储
         container_name: astrm
