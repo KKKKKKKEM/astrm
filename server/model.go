@@ -28,7 +28,7 @@ type HttpStrm struct {
 	Match     string   `yaml:"match" json:"match"`
 	Actions   []Action `yaml:"actions" json:"actions"`
 	TransCode bool     `yaml:"transCode" json:"transCode"`
-	FinalURL  bool     // 对 URL 进行重定向判断，找到非重定向地址再重定向给客户端，减少客户端重定向次数
+	FinalURL  bool     `yaml:"finalURL" json:"finalURL"` // 对 URL 进行重定向判断，找到非重定向地址再重定向给客户端，减少客户端重定向次数
 }
 
 type AlistStrm struct {

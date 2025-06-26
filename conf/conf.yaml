@@ -63,6 +63,7 @@ emby:
   # http 类型的 strm 文件302方案，也就是strm文件内容是http://xx 这类的链接
   httpStrm:
     - enable: true # 开关
+      finalURL: true # 是否定向到最终的url
       match: /data/media # strm 文件本地存储路径的正则，满足则会出发302方案
       # 触发之后的操作
       actions:
