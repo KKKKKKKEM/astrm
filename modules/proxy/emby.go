@@ -3,7 +3,7 @@ package proxy
 import (
 	"astrm/server"
 	"astrm/service/emby"
-	"bytes"
+	"astrm/utils"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -15,7 +15,6 @@ import (
 	"path"
 	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -29,7 +28,7 @@ type EmbyServerHandler struct {
 }
 
 // 初始化
-func NewHandler() *EmbyServerHandler {
+func NewEmbyHandler() *EmbyServerHandler {
 	embyServerHandler := &EmbyServerHandler{}
 	embyServerHandler.server = emby.New(server.Cfg.Emby.Addr, server.Cfg.Emby.ApiKey)
 	if embyServerHandler.modifyProxyMap == nil {
@@ -110,8 +109,13 @@ func (embyServerHandler *EmbyServerHandler) RecgonizeStrmFileType(strmFilePath s
 // /Items/:itemId/PlaybackInfo
 // 强制将 HTTPStrm 设置为支持直链播放和转码、AlistStrm 设置为支持直链播放并且禁止转码
 func (embyServerHandler *EmbyServerHandler) ModifyPlaybackInfo(rw *http.Response) error {
-	defer rw.Body.Close()
-	body, err := io.ReadAll(rw.Body)
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(rw.Body)
+	body, err := utils.ReadBody(rw)
 	if err != nil {
 		logrus.Errorln("读取 Body 出错：", err)
 		return err
@@ -194,14 +198,8 @@ func (embyServerHandler *EmbyServerHandler) ModifyPlaybackInfo(rw *http.Response
 		return err
 	}
 
-	rw.Body = io.NopCloser(bytes.NewBuffer(body)) // 重置响应体
-	// 更新 Content-Length 头
-	rw.ContentLength = int64(len(body))
-	rw.Header.Set("Content-Length", strconv.Itoa(len(body)))
-	// 更新 Content-Type 头
-	rw.Header.Set("Content-Type", "application/json")
-
-	return nil
+	rw.Header.Set("Content-Type", "application/json") // 更新 Content-Type 头
+	return utils.UpdateBody(rw, body)
 }
 
 // 视频流处理器
@@ -218,7 +216,7 @@ func (embyServerHandler *EmbyServerHandler) VideosHandler(ctx *gin.Context) {
 	matches := embyRegexp["others"]["VideoRedirectReg"].FindStringSubmatch(orginalPath)
 	if len(matches) == 2 {
 		redirectPath := fmt.Sprintf("/videos/%s/stream", matches[0])
-		logrus.Debugln(orginalPath + " 重定向至：" + redirectPath)
+		logrus.Debugf("%s 重定向至：%s", orginalPath, redirectPath)
 		ctx.Redirect(http.StatusFound, redirectPath)
 		return
 	}
@@ -250,20 +248,31 @@ func (embyServerHandler *EmbyServerHandler) VideosHandler(ctx *gin.Context) {
 			case HTTPStrm:
 				if *mediasource.Protocol == emby.HTTP {
 					cfg := server.Cfg.Emby.HttpStrm[idx]
+					redirectURL := *mediasource.Path
+
+					if cfg.FinalURL {
+						logrus.Debugln("HTTPStrm 启用获取最终 URL，开始尝试获取最终 URL")
+						if finalURL, err := utils.GetFinalURL(redirectURL, ctx.Request.UserAgent()); err != nil {
+							logrus.Warningln("获取最终 URL 失败，使用原始 URL：", err)
+						} else {
+							redirectURL = finalURL
+						}
+					}
 
 					for _, action := range cfg.Actions {
 						switch action.Type {
 						case "replace":
 							rl := strings.Split(action.Args, "->")
-							*mediasource.Path = strings.ReplaceAll(*mediasource.Path, strings.TrimSpace(rl[0]), strings.TrimSpace(rl[1]))
+							redirectURL = strings.ReplaceAll(*mediasource.Path, strings.TrimSpace(rl[0]), strings.TrimSpace(rl[1]))
 
 						}
 					}
 
-					logrus.Infoln("HTTPStrm 重定向至：", *mediasource.Path)
-					ctx.Redirect(http.StatusFound, *mediasource.Path)
+					logrus.Infoln("HTTPStrm 重定向至：", redirectURL)
+					ctx.Redirect(http.StatusFound, redirectURL)
 				}
 				return
+
 			case AlistStrm: // 无需判断 *mediasource.Container 是否以Strm结尾，当 AlistStrm 存储的位置有对应的文件时，*mediasource.Container 会被设置为文件后缀
 				alistServer := server.Cfg.Alist[server.Cfg.Emby.AlistStrm[idx].Alist]
 				fsGetData, err := alistServer.FsGet(context.TODO(), *mediasource.Path)
@@ -275,7 +284,11 @@ func (embyServerHandler *EmbyServerHandler) VideosHandler(ctx *gin.Context) {
 				if server.Cfg.Emby.AlistStrm[idx].RawURL {
 					redirectURL = fsGetData.RawURL
 				} else {
-					redirectURL = fmt.Sprintf("%s/d%s?sign=%s", alistServer.Endpoint, *mediasource.Path, fsGetData.Sign)
+					redirectURL = fmt.Sprintf("%s/d%s", alistServer.Endpoint, *mediasource.Path)
+					if fsGetData.Sign != "" {
+						redirectURL += "?sign=" + fsGetData.Sign
+					}
+
 				}
 				logrus.Infoln("AlistStrm 重定向至：", redirectURL)
 				ctx.Redirect(http.StatusFound, redirectURL)
@@ -299,20 +312,7 @@ func (embyServerHandler *EmbyServerHandler) ModifyBaseHtmlPlayer(rw *http.Respon
 	}
 
 	modifiedBodyStr := strings.ReplaceAll(string(body), `mediaSource.IsRemote&&"DirectPlay"===playMethod?null:"anonymous"`, "null") // 修改响应体
-	updateBody(rw, modifiedBodyStr)
-	return nil
-
-}
-
-// 更新响应体
-//
-// 修改响应体、更新Content-Length
-func updateBody(rw *http.Response, s string) {
-	rw.Body = io.NopCloser(bytes.NewBuffer([]byte(s))) // 重置响应体
-
-	// 更新 Content-Length 头
-	rw.ContentLength = int64(len(s))
-	rw.Header.Set("Content-Length", strconv.Itoa(len(s)))
+	return utils.UpdateBody(rw, []byte(modifiedBodyStr))
 
 }
 

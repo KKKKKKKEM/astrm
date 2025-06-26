@@ -4,11 +4,11 @@ import (
 	"astrm/server"
 )
 
-var handler *EmbyServerHandler
+var embyHandler *EmbyServerHandler
 
 func Init() {
 	r := server.GetApp()
-	handler = NewHandler()
+	embyHandler = NewEmbyHandler()
 
 	r.NoRoute(proxy)
 }
