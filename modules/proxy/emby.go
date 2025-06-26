@@ -251,7 +251,7 @@ func (embyServerHandler *EmbyServerHandler) VideosHandler(ctx *gin.Context) {
 					redirectURL := *mediasource.Path
 
 					if cfg.FinalURL {
-						logrus.Debugln("HTTPStrm 启用获取最终 URL，开始尝试获取最终 URL")
+						logrus.Infoln("HTTPStrm 启用获取最终 URL，开始尝试获取最终 URL")
 						if finalURL, err := utils.GetFinalURL(redirectURL, ctx.Request.UserAgent()); err != nil {
 							logrus.Warningln("获取最终 URL 失败，使用原始 URL：", err)
 						} else {
