@@ -33,7 +33,7 @@ type RegexpRouteRule struct {
 
 func proxy(ctx *gin.Context) {
 	for _, rule := range embyHandler.GetRegexpRouteRules() {
-		if rule.Regexp.MatchString(ctx.Request.RequestURI) { // 带有查询参数的字符串：/emby/Items/54/Images/Primary?maxWidth=600&tag=f66addf8af207bdc39cdb4dd56db0d0b&quality=90
+		if rule.Regexp.MatchString(ctx.Request.URL.Path) { // 带有查询参数的字符串：/emby/Items/54/Images/Primary?maxWidth=600&tag=f66addf8af207bdc39cdb4dd56db0d0b&quality=90
 			rule.Handler(ctx)
 			return
 		}
