@@ -263,7 +263,7 @@ func (embyServerHandler *EmbyServerHandler) VideosHandler(ctx *gin.Context) {
 						switch action.Type {
 						case "replace":
 							rl := strings.Split(action.Args, "->")
-							redirectURL = strings.ReplaceAll(*mediasource.Path, strings.TrimSpace(rl[0]), strings.TrimSpace(rl[1]))
+							redirectURL = strings.ReplaceAll(redirectURL, strings.TrimSpace(rl[0]), strings.TrimSpace(rl[1]))
 
 						}
 					}
