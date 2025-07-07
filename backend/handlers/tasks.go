@@ -1,14 +1,24 @@
 package handlers
 
 import (
+	"astrm/backend/app/taskrunner"
 	"astrm/backend/models"
-	"astrm/backend/services/taskrunner"
 	"bytes"
 	"github.com/gin-gonic/gin"
 	"io"
 	"log"
 	"net/http"
 )
+
+type taskRequest struct {
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Concurrency int            `json:"concurrency"`
+	Opts        map[string]any `json:"opts"`
+	Command     string         `json:"command"`
+	Schedule    string         `json:"schedule"`
+	Enabled     bool           `json:"enabled"`
+}
 
 // ListTasks 获取所有任务
 func ListTasks(c *gin.Context) {
@@ -58,20 +68,6 @@ func GetTask(c *gin.Context) {
 
 // CreateTask 创建新任务
 func CreateTask(c *gin.Context) {
-	var taskRequest struct {
-		Name        string             `json:"name"`
-		Description string             `json:"description"`
-		Alist       int                `json:"alist"`
-		Concurrency int                `json:"concurrency"`
-		From        string             `json:"from"`
-		Dest        string             `json:"dest"`
-		Mode        string             `json:"mode"`
-		Spec        string             `json:"spec"`
-		Opts        models.TaskOptions `json:"opts"`
-		Command     string             `json:"command"`
-		Schedule    string             `json:"schedule"`
-		Enabled     bool               `json:"enabled"`
-	}
 
 	// 打印请求体以便调试
 	body, _ := c.GetRawData()
@@ -79,8 +75,9 @@ func CreateTask(c *gin.Context) {
 
 	// 重新设置请求体，因为 GetRawData 会消耗它
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
+	form := taskRequest{}
 
-	if err := c.ShouldBindJSON(&taskRequest); err != nil {
+	if err := c.ShouldBindJSON(&form); err != nil {
 		log.Printf("绑定JSON失败: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -88,18 +85,13 @@ func CreateTask(c *gin.Context) {
 
 	// 创建任务对象
 	task := models.Task{
-		Name:        taskRequest.Name,
-		Description: taskRequest.Description,
-		Alist:       taskRequest.Alist,
-		Concurrency: taskRequest.Concurrency,
-		From:        taskRequest.From,
-		Dest:        taskRequest.Dest,
-		Mode:        taskRequest.Mode,
-		Spec:        taskRequest.Spec,
-		Opts:        taskRequest.Opts,
-		Command:     taskRequest.Command,
-		Schedule:    taskRequest.Schedule,
-		Enabled:     taskRequest.Enabled,
+		Name:        form.Name,
+		Description: form.Description,
+		Concurrency: form.Concurrency,
+		Opts:        form.Opts,
+		Command:     form.Command,
+		Schedule:    form.Schedule,
+		Enabled:     form.Enabled,
 	}
 
 	// 打印解析后的任务数据
@@ -108,15 +100,6 @@ func CreateTask(c *gin.Context) {
 	// 如果没有设置默认值，设置默认值
 	if task.Concurrency <= 0 {
 		task.Concurrency = 1
-	}
-
-	// 确保 TaskOptions 有默认值
-	if task.Opts.Deep <= 0 {
-		task.Opts.Deep = 1
-	}
-
-	if task.Opts.Interval <= 0 {
-		task.Opts.Interval = 1
 	}
 
 	// 设置状态为空闲
@@ -154,25 +137,10 @@ func UpdateTask(c *gin.Context) {
 
 	// 创建一个新的任务对象来接收更新数据
 	var updatedTask models.Task
-
-	// 创建一个临时结构体来接收更新数据
-	var taskRequest struct {
-		Name        string             `json:"name"`
-		Description string             `json:"description"`
-		Alist       int                `json:"alist"`
-		Concurrency int                `json:"concurrency"`
-		From        string             `json:"from"`
-		Dest        string             `json:"dest"`
-		Mode        string             `json:"mode"`
-		Spec        string             `json:"spec"`
-		Opts        models.TaskOptions `json:"opts"`
-		Command     string             `json:"command"`
-		Schedule    string             `json:"schedule"`
-		Enabled     bool               `json:"enabled"`
-	}
+	form := taskRequest{}
 
 	// 绑定更新数据
-	if err := c.ShouldBindJSON(&taskRequest); err != nil {
+	if err := c.ShouldBindJSON(&form); err != nil {
 		log.Printf("绑定更新数据失败: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -181,18 +149,13 @@ func UpdateTask(c *gin.Context) {
 	// 将临时结构体数据复制到更新任务对象
 	updatedTask = models.Task{
 		BaseModel:   existingTask.BaseModel,
-		Name:        taskRequest.Name,
-		Description: taskRequest.Description,
-		Alist:       taskRequest.Alist,
-		Concurrency: taskRequest.Concurrency,
-		From:        taskRequest.From,
-		Dest:        taskRequest.Dest,
-		Mode:        taskRequest.Mode,
-		Spec:        taskRequest.Spec,
-		Opts:        taskRequest.Opts,
-		Command:     taskRequest.Command,
-		Schedule:    taskRequest.Schedule,
-		Enabled:     taskRequest.Enabled,
+		Name:        form.Name,
+		Description: form.Description,
+		Concurrency: form.Concurrency,
+		Opts:        form.Opts,
+		Command:     form.Command,
+		Schedule:    form.Schedule,
+		Enabled:     form.Enabled,
 		Status:      existingTask.Status,
 		LastRun:     existingTask.LastRun,
 		NextRun:     existingTask.NextRun,
@@ -204,14 +167,6 @@ func UpdateTask(c *gin.Context) {
 	// 确保必要的默认值
 	if updatedTask.Concurrency <= 0 {
 		updatedTask.Concurrency = 1
-	}
-
-	if updatedTask.Opts.Deep <= 0 {
-		updatedTask.Opts.Deep = 1
-	}
-
-	if updatedTask.Opts.Interval <= 0 {
-		updatedTask.Opts.Interval = 1
 	}
 
 	// 保存更新
@@ -255,7 +210,8 @@ func RunTask(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "任务未找到"})
 		return
 	}
-
+	task.Status = models.TaskStatusIdle
+	models.DB.Save(task)
 	// 获取任务执行器
 	runner := taskrunner.GetTaskManager().GetRunner()
 

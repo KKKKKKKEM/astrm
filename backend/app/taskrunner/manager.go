@@ -22,7 +22,6 @@ func GetTaskManager() *TaskManager {
 	once.Do(func() {
 		// 创建任务执行器
 		runner := NewTaskRunner()
-
 		instance = &TaskManager{runner: runner}
 
 		log.Printf("任务管理器初始化完成")

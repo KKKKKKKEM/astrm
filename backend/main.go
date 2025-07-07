@@ -1,13 +1,12 @@
 package main
 
 import (
+	"astrm/backend/app"
+	"astrm/backend/app/taskrunner"
 	"astrm/backend/config"
 	"astrm/backend/handlers"
-	"astrm/backend/middlewares"
 	"astrm/backend/models"
-	"astrm/backend/routes"
-	"astrm/backend/services/taskrunner"
-	"github.com/gin-gonic/gin"
+	"astrm/backend/services/handler"
 	"log"
 	"net/http"
 )
@@ -29,31 +28,24 @@ func main() {
 	log.Println("任务管理系统初始化完成")
 
 	// 可以在这里注册自定义任务执行器
-	// 例如: taskManager.RegisterExecutor("custom", func() taskrunner.TaskExecutor { return &CustomExecutor{} })
+	// 例如: taskManager.RegisterHandler("custom", func() taskrunner.TaskExecutor { return &CustomExecutor{} })
 
 	// 创建Gin实例
-	r := gin.Default()
+	r := app.InitEngine(
+		[]app.SetupRoute{
+			handlers.RegisterTasksRoutes,
+			handlers.RegisterConfigsRoutes,
+			handlers.RegisterLogsRoutes,
+			handlers.RegisterProxiesRoutes,
+		},
+		[]app.SetupEngine{
+			// 反向代理路由 - 动态生成基于配置
+			handlers.SetupProxyRoutes,
+		},
+	)
 
-	// 添加中间件
-	r.Use(middlewares.CORSMiddleware())
-	r.Use(middlewares.LoggerMiddleware())
-	r.Use(middlewares.RouterMiddleware(r))
-
-	// 设置静态文件目录 - 用于提供前端文件
-	r.Static("/assets", "../frontend/dist/assets")
-	r.StaticFile("/", "../frontend/dist/index.html")
-
-	// API路由
-	api := r.Group("/api")
-	routes.InitRoutes(api)
-
-	// 反向代理路由 - 动态生成基于配置
-	handlers.SetupProxyRoutes(r)
-
-	// 非API路由重定向到前端
-	r.NoRoute(func(c *gin.Context) {
-		c.File("../frontend/dist/index.html")
-	})
+	runner := taskrunner.GetTaskManager().GetRunner()
+	runner.RegisterHandler("alist", handler.NewAlistHandler())
 
 	// 启动服务器
 	serverAddr := appConfig.Server.Host + ":" + appConfig.Server.Port

@@ -25,6 +25,7 @@ func InitDB() error {
 		&Log{},
 		&Proxy{},
 		&TaskLog{},
+		//&ProxyPlugin{},
 	)
 
 	return err

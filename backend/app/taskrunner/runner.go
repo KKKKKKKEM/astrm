@@ -15,49 +15,86 @@ import (
 type DefaultTaskRunner struct {
 	mutex        sync.RWMutex
 	runningTasks map[string]*runningTaskInfo
-	executors    map[string]TaskExecutor
+	handlers     map[string]TaskHandler
 }
 
 type runningTaskInfo struct {
-	task     *models.Task
-	executor TaskExecutor
-	output   strings.Builder
-	status   models.TaskStatus
-	logID    string
+	task   *models.Task
+	future *Future
+	output strings.Builder
+	status models.TaskStatus
+	logID  string
 }
 
 // NewTaskRunner 创建一个新的任务执行器
 func NewTaskRunner() *DefaultTaskRunner {
 	runner := &DefaultTaskRunner{
 		runningTasks: make(map[string]*runningTaskInfo),
-		executors:    make(map[string]TaskExecutor),
+		handlers:     make(map[string]TaskHandler),
 	}
-
-	// 注册默认执行器
-	//runner.RegisterExecutor("command", executors.NewCommandTaskExecutor())
-	runner.RegisterExecutor("alist_url", NewAlistTaskExecutor())
 
 	return runner
 }
 
-// RegisterExecutor 注册任务执行器
-func (r *DefaultTaskRunner) RegisterExecutor(executorType string, executor TaskExecutor) {
+// RegisterHandler 注册任务执行器
+func (r *DefaultTaskRunner) RegisterHandler(executorType string, handler TaskHandler) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	r.executors[executorType] = executor
+	r.handlers[executorType] = handler
 	log.Printf("已注册任务执行器: %s", executorType)
 }
 
-// getExecutorForTask 根据任务类型获取相应的执行器
-func (r *DefaultTaskRunner) getExecutorForTask(task *models.Task) (TaskExecutor, error) {
+// getHandlerForTask 根据任务类型获取相应的执行器
+func (r *DefaultTaskRunner) getHandlerForTask(task *models.Task) (TaskHandler, error) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
-	executorIns, exists := r.executors[task.Mode]
+	executorIns, exists := r.handlers[task.Command]
 	if !exists {
-		return nil, fmt.Errorf("未找到任务类型的执行器: %s", task.Mode)
+		return nil, fmt.Errorf("未找到任务类型的执行器: %s", task.Command)
 	}
 	return executorIns, nil
+}
+
+func (r *DefaultTaskRunner) Execute(ctx context.Context, task *models.Task, handler TaskHandler, log chan<- string) *Future {
+
+	future := &Future{}
+	// 保存任务和日志ID
+	future.mutex.Lock()
+	future.finished = false
+	future.mutex.Unlock()
+
+	// 创建可取消的上下文
+	ctxWithCancel, cancel := context.WithCancel(ctx)
+	future.cancel = cancel
+
+	// 启动一个goroutine执行任务
+	go func() {
+		defer func() {
+			// 确保管道关闭
+			close(log)
+		}()
+
+		defer cancel()
+
+		// 检查上下文是否已取消
+		select {
+		case <-ctxWithCancel.Done():
+			log <- fmt.Sprintf("任务已取消")
+			return
+		default:
+			// 继续执行
+			future.result, future.err = handler.Handle(task, log)
+
+		}
+
+		// 设置完成状态
+		future.mutex.Lock()
+		future.finished = true
+		future.mutex.Unlock()
+	}()
+
+	return future
 }
 
 // RunTask 运行指定的任务
@@ -89,7 +126,7 @@ func (r *DefaultTaskRunner) RunTask(ctx context.Context, task *models.Task) (str
 	}
 
 	// 获取适合该任务的执行器
-	executor, err := r.getExecutorForTask(task)
+	handler, err := r.getHandlerForTask(task)
 	if err != nil {
 		// 更新任务状态为失败
 		task.Status = models.TaskStatusFailed
@@ -106,31 +143,17 @@ func (r *DefaultTaskRunner) RunTask(ctx context.Context, task *models.Task) (str
 	}
 
 	// 创建一个 string 的 chan
-	outputChan := make(chan string)
+	logChan := make(chan string)
 
 	// 使用执行器执行任务
-	err = executor.Execute(ctx, task, outputChan)
-	if err != nil {
-		// 更新任务状态为失败
-		task.Status = models.TaskStatusFailed
-		models.DB.Save(task)
-
-		// 更新日志
-		taskLog.Status = models.TaskStatusFailed
-		taskLog.Output = fmt.Sprintf("启动任务失败: %v", err)
-		endTime := time.Now()
-		taskLog.EndTime = &endTime
-		models.DB.Save(&taskLog)
-
-		return "", fmt.Errorf("启动任务失败: %w", err)
-	}
+	future := r.Execute(ctx, task, handler, logChan)
 
 	// 创建任务信息对象
 	taskInfo := &runningTaskInfo{
-		task:     task,
-		executor: executor,
-		status:   models.TaskStatusRunning,
-		logID:    taskLog.ID,
+		task:   task,
+		future: future,
+		status: models.TaskStatusRunning,
+		logID:  taskLog.ID,
 	}
 
 	r.mutex.Lock()
@@ -140,7 +163,7 @@ func (r *DefaultTaskRunner) RunTask(ctx context.Context, task *models.Task) (str
 	// 创建一个单独的goroutine来监控任务执行
 	go func() {
 
-		for line := range outputChan {
+		for line := range logChan {
 			log.Printf("[Task %s] %s", task.ID, line)
 			r.mutex.Lock()
 			taskInfo.output.WriteString(line + "\n")
@@ -149,16 +172,29 @@ func (r *DefaultTaskRunner) RunTask(ctx context.Context, task *models.Task) (str
 			r.mutex.Unlock()
 		}
 
-		// 更新任务状态和日志
-		endTime := time.Now()
-		taskLog.EndTime = &endTime
-		taskLog.Output = taskInfo.output.String()
-		task.Status = models.TaskStatusSuccess
-		taskLog.Status = models.TaskStatusSuccess
-		log.Printf("任务 %s 执行完成", task.ID)
-		// 保存最终更新
-		models.DB.Save(task)
-		models.DB.Save(&taskLog)
+		if result, err := future.GetResult(); err != nil {
+			// 更新任务状态为失败
+			task.Status = models.TaskStatusFailed
+			models.DB.Save(task)
+
+			// 更新日志
+			taskLog.Status = models.TaskStatusFailed
+			taskLog.Output = fmt.Sprintf("%s\n[Task %s] 执行失败: %v", taskInfo.output.String(), task.ID, err)
+			endTime := time.Now()
+			taskLog.EndTime = &endTime
+			models.DB.Save(&taskLog)
+		} else {
+			// 更新任务状态和日志
+			endTime := time.Now()
+			task.Status = models.TaskStatusSuccess
+			models.DB.Save(task)
+
+			taskLog.EndTime = &endTime
+			taskLog.Output = fmt.Sprintf("%s\n[Task %s] 执行完成, 执行结果为: %v", taskInfo.output.String(), task.ID, result)
+			taskLog.Status = models.TaskStatusSuccess
+			// 保存最终更新
+			models.DB.Save(&taskLog)
+		}
 
 		// 更新任务信息状态
 		r.mutex.Lock()
@@ -186,7 +222,7 @@ func (r *DefaultTaskRunner) StopTask(taskID string) error {
 	}
 
 	// 使用执行器停止任务
-	if err := taskInfo.executor.Stop(); err != nil {
+	if err := taskInfo.future.Stop(); err != nil {
 		return fmt.Errorf("停止任务失败: %w", err)
 	}
 
