@@ -4,23 +4,24 @@ import (
 	"astrm/service/alist"
 	"astrm/service/job"
 	"fmt"
+	"os"
+	"strconv"
+
 	"github.com/google/uuid"
 	"github.com/robfig/cron/v3"
 	"gopkg.in/yaml.v3"
-	"os"
-	"strconv"
 )
 
 type Emby struct {
-	Addr      string      `yaml:"addr"`
-	ApiKey    string      `yaml:"apiKey"`
-	HttpStrm  []HttpStrm  `yaml:"httpStrm"`
-	AlistStrm []AlistStrm `yaml:"alistStrm"`
+	Addr      string      `yaml:"addr" json:"addr"`
+	ApiKey    string      `yaml:"apiKey" json:"apiKey"`
+	HttpStrm  []HttpStrm  `yaml:"httpStrm" json:"httpStrm"`
+	AlistStrm []AlistStrm `yaml:"alistStrm" json:"alistStrm"`
 }
 
 type Action struct {
-	Type string `yaml:"type"`
-	Args string `yaml:"args"`
+	Type string `yaml:"type" json:"type"`
+	Args string `yaml:"args" json:"args"`
 }
 
 type HttpStrm struct {
@@ -75,6 +76,11 @@ func (s *Storage) store(path string) (err error) {
 	// 写入文件
 	err = os.WriteFile(path, bytes, 0644)
 	return
+}
+
+// Store 保存配置到持久化文件
+func (s *Storage) Store() error {
+	return s.store(s.Persistence)
 }
 
 func (s *Storage) RegisterJob(j *job.Job) (err error) {

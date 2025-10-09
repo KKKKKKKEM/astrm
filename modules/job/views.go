@@ -3,9 +3,10 @@ package job
 import (
 	"astrm/server"
 	"astrm/service/job"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"net/http"
 )
 
 func list(c *gin.Context) {

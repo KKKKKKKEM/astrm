@@ -61,6 +61,18 @@
             </svg>
             <span>Jobs</span>
           </button>
+          <button id="navEmby" class="menu-item" aria-controls="viewEmby">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path
+                d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"
+              />
+            </svg>
+            <span>Emby</span>
+          </button>
         </nav>
       </aside>
       <div id="sidebarBackdrop" class="sidebar-backdrop" hidden></div>
@@ -122,6 +134,102 @@
                   </thead>
                   <tbody></tbody>
                 </table>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div
+          id="viewEmby"
+          class="ui-view"
+          role="tabpanel"
+          aria-labelledby="navEmby"
+        >
+          <section class="panel">
+            <div class="ui-toolbar">
+              <h2>Emby 配置</h2>
+            </div>
+            <div class="panel-body">
+              <div class="emby-config-section">
+                <h3>基本配置</h3>
+                <div class="config-form">
+                  <div class="form-group">
+                    <label>服务器地址</label>
+                    <input
+                      type="text"
+                      id="embyAddr"
+                      class="form-control"
+                      placeholder="http://localhost:8096"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label>API Key</label>
+                    <input
+                      type="text"
+                      id="embyApiKey"
+                      class="form-control"
+                      placeholder="Your Emby API Key"
+                    />
+                  </div>
+                  <button id="saveEmbyConfig" class="ui-btn ui-btn-primary">
+                    保存配置
+                  </button>
+                </div>
+              </div>
+
+              <div class="emby-config-section">
+                <div class="section-header">
+                  <h3>HTTP Strm 规则</h3>
+                  <button
+                    id="addHttpStrmBtn"
+                    class="ui-btn ui-btn-sm ui-btn-primary"
+                  >
+                    添加规则
+                  </button>
+                </div>
+                <div class="table-wrap">
+                  <table id="httpStrmTable" class="ui-table">
+                    <thead>
+                      <tr>
+                        <th>启用</th>
+                        <th>匹配规则</th>
+                        <th>操作</th>
+                        <th>转码</th>
+                        <th>最终URL</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="emby-config-section">
+                <div class="section-header">
+                  <h3>Alist Strm 规则</h3>
+                  <button
+                    id="addAlistStrmBtn"
+                    class="ui-btn ui-btn-sm ui-btn-primary"
+                  >
+                    添加规则
+                  </button>
+                </div>
+                <div class="table-wrap">
+                  <table id="alistStrmTable" class="ui-table">
+                    <thead>
+                      <tr>
+                        <th>启用</th>
+                        <th>匹配规则</th>
+                        <th>操作</th>
+                        <th>Alist</th>
+                        <th>转码</th>
+                        <th>原始URL</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </section>
@@ -213,8 +321,45 @@
           <div id="editorjs"></div>
         </div>
         <div class="ui-drawer-footer">
+          <button type="button" class="ui-btn ui-btn-ghost" id="cancelEditBtn">
+            取消
+          </button>
           <button type="button" class="ui-btn ui-btn-primary" id="saveEditBtn">
-            Save changes
+            保存
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drawer: Edit Strm Rule -->
+    <div
+      class="ui-drawer"
+      id="strmRuleModal"
+      aria-hidden="true"
+      role="dialog"
+      aria-labelledby="strmRuleModalLabel"
+    >
+      <div class="ui-drawer-panel">
+        <div class="ui-drawer-header">
+          <h5 class="modal-title" id="strmRuleModalLabel">编辑规则</h5>
+        </div>
+        <div class="ui-drawer-body">
+          <div id="strmRuleForm" class="config-form"></div>
+        </div>
+        <div class="ui-drawer-footer">
+          <button
+            type="button"
+            class="ui-btn ui-btn-ghost"
+            id="cancelStrmRuleBtn"
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            class="ui-btn ui-btn-primary"
+            id="saveStrmRuleBtn"
+          >
+            保存
           </button>
         </div>
       </div>

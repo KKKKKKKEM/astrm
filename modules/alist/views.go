@@ -3,9 +3,10 @@ package alist
 import (
 	"astrm/server"
 	"astrm/service/alist"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 func list(c *gin.Context) {

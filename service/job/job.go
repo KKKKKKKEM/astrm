@@ -1,12 +1,13 @@
 package job
 
 import (
-	"github.com/sirupsen/logrus"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 type Opts struct {
