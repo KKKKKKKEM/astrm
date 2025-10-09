@@ -1,118 +1,249 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Astrm</title>
-    <!-- Bootstrap CSS -->
-    <link href="static/bootstrap.min.css" rel="stylesheet">
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="static/style.css">
-</head>
-<body>
-<div class="container mt-5">
-    <h1 class="text-center mb-4">Astrm</h1>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Astrm Admin</title>
+    <link rel="stylesheet" href="static/style.css" />
+    <meta name="color-scheme" content="light" />
+    <meta name="description" content="Astrm Admin UI" />
+    <meta name="format-detection" content="telephone=no" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🧭</text></svg>"
+    />
+    <style>
+      .navbar-brand {
+        font-weight: 600;
+      }
+    </style>
+    <!--[if IE]>
+      <script>
+        alert("Your browser is not supported. Please upgrade.");
+      </script>
+    <![endif]-->
+  </head>
+  <body>
+    <nav class="ui-navbar">
+      <button id="sidebarToggle" class="brand-logo" aria-label="Toggle Menu">
+        <span class="logo-icon">🧭</span>
+        <span class="logo-text">Astrm</span>
+      </button>
+    </nav>
 
-<!--    <h2></h2>-->
-    <h2>
-        Alist
-        <button id="addAlistBtn"  type="button" class="btn btn-outline-dark">Add Alist</button>
-    </h2>
-    <table id="alistTable" class="table table-bordered table-striped">
-        <thead>
-        <tr>
-            <th>Name</th>
-            <th>Endpoint</th>
-            <th>Token</th>
-            <th>Action</th>
-        </tr>
-        </thead>
-        <tbody>
-        <!-- Rows will be dynamically inserted here -->
-        </tbody>
-    </table>
+    <div class="layout" id="appLayout">
+      <aside id="sidebar" class="sidebar" aria-label="Sidebar">
+        <div class="sidebar-header">Manage</div>
+        <nav class="menu">
+          <button
+            id="navAlist"
+            class="menu-item active"
+            aria-controls="viewAlist"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z" />
+            </svg>
+            <span>Alists</span>
+          </button>
+          <button id="navJobs" class="menu-item" aria-controls="viewJobs">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path
+                d="M12 8v5l4 2-.5.87-4.5-2.37V8h1zM6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 2v12h12V6H6z"
+              />
+            </svg>
+            <span>Jobs</span>
+          </button>
+        </nav>
+      </aside>
+      <div id="sidebarBackdrop" class="sidebar-backdrop" hidden></div>
 
-    <h2>
-        Jobs
-        <button id="addJobBtn"  type="button" class="btn btn-outline-dark">Add Job</button>
-    </h2>
-    <table id="jobTable" class="table table-bordered table-striped">
-        <thead>
-        <tr>
-            <th>Name</th>
-            <th>From</th>
-            <th>Dest</th>
-            <th>Mode</th>
-            <th>Opts</th>
-            <th>Alist</th>
-            <th>Spec</th>
-            <th>Concurrency</th>
-            <th>Action</th>
-        </tr>
-        </thead>
-        <tbody>
-        <!-- Rows will be dynamically inserted here -->
-        </tbody>
-    </table>
-</div>
-
-<!-- Add/Edit Modal -->
-<div class="modal fade" id="addEditModal" tabindex="-1" role="dialog" aria-labelledby="addEditModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addEditModalLabel">Add/Edit Item</h5>
+      <main class="content">
+        <div
+          id="viewAlist"
+          class="ui-view active"
+          role="tabpanel"
+          aria-labelledby="navAlist"
+        >
+          <section class="panel">
+            <div class="ui-toolbar">
+              <h2>Alists</h2>
             </div>
-            <div class="modal-body">
-                <form id="addItemForm">
-                    <div id="formFieldsContainer"></div>
-                </form>
+            <div class="panel-body">
+              <div class="table-wrap">
+                <table id="alistTable" class="ui-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Endpoint</th>
+                      <th>Token</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
             </div>
-            <div class="modal-footer">
-<!--                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>-->
-                <button type="button" class="btn btn-primary" id="saveItemBtn">Save</button>
-            </div>
+          </section>
         </div>
+
+        <div
+          id="viewJobs"
+          class="ui-view"
+          role="tabpanel"
+          aria-labelledby="navJobs"
+        >
+          <section class="panel">
+            <div class="ui-toolbar">
+              <h2>Jobs</h2>
+            </div>
+            <div class="panel-body">
+              <div class="table-wrap">
+                <table id="jobTable" class="ui-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>From</th>
+                      <th>Dest</th>
+                      <th>Mode</th>
+                      <th>Opts</th>
+                      <th>Alist</th>
+                      <th>Spec</th>
+                      <th>Concurrency</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Floating Add Buttons - Outside ui-view to always be visible -->
+        <button
+          id="addAlistBtn"
+          class="floating-add-btn"
+          data-tooltip="Add Alist"
+          aria-label="Add Alist"
+          style="display: none"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+
+        <button
+          id="addJobBtn"
+          class="floating-add-btn"
+          data-tooltip="Add Job"
+          aria-label="Add Job"
+          style="display: none"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+      </main>
     </div>
-</div>
 
-<!-- Edit Modal -->
-<div class="modal fade" id="editModal" tabindex="-1" role="dialog" aria-labelledby="editModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editModalLabel">Edit Field</h5>
-            </div>
-            <div class="modal-body">
-                <div id="editorjs"></div>
-            </div>
-            <div class="modal-footer">
-<!--                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>-->
-                <button type="button" class="btn btn-primary" id="saveEditBtn">Save changes</button>
-            </div>
+    <!-- Drawer: Add/Edit -->
+    <div
+      class="ui-drawer"
+      id="addEditModal"
+      aria-hidden="true"
+      role="dialog"
+      aria-labelledby="addEditModalLabel"
+    >
+      <div class="ui-drawer-panel">
+        <div class="ui-drawer-header">
+          <h5 class="modal-title" id="addEditModalLabel">Add Item</h5>
         </div>
+        <div class="ui-drawer-body">
+          <form id="addItemForm">
+            <div id="formFieldsContainer"></div>
+          </form>
+        </div>
+        <div class="ui-drawer-footer">
+          <button type="button" class="ui-btn ui-btn-primary" id="saveItemBtn">
+            Save
+          </button>
+        </div>
+      </div>
     </div>
-</div>
 
-<!-- Toast Container -->
-<div id="toastContainer" class="position-fixed bottom-0 right-0 p-3" style="z-index: 1100;">
-    <div id="liveToast" class="toast hide" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="toast-header">
-            <strong class="me-auto">Message</strong>
-            <small></small>
-            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+    <!-- Drawer: Edit Field -->
+    <div
+      class="ui-drawer"
+      id="editModal"
+      aria-hidden="true"
+      role="dialog"
+      aria-labelledby="editModalLabel"
+    >
+      <div class="ui-drawer-panel">
+        <div class="ui-drawer-header">
+          <h5 class="modal-title" id="editModalLabel">Edit Field</h5>
         </div>
-        <div class="toast-body">
-            Hello, world! This is a toast message.
+        <div class="ui-drawer-body">
+          <div id="editorjs"></div>
         </div>
+        <div class="ui-drawer-footer">
+          <button type="button" class="ui-btn ui-btn-primary" id="saveEditBtn">
+            Save changes
+          </button>
+        </div>
+      </div>
     </div>
-</div>
 
-<script src="static/jquery-3.5.1.slim.min.js"></script>
-<script src="static/popper.min.js"></script>
-<script src="static/bootstrap.min.js"></script>
-<script src="static/editorjs.js"></script>
-<script src="static/code.js"></script>
-<script src="static/script.js"></script>
-</body>
+    <!-- Toast Container (pure) -->
+    <div id="toastContainer">
+      <div
+        id="liveToast"
+        class="ui-toast"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <div class="title">Message</div>
+        <div class="toast-body">Done.</div>
+        <button
+          type="button"
+          class="ui-close"
+          data-ui-close="toast"
+          aria-label="Close"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+
+    <script src="static/editorjs.js"></script>
+    <script src="static/code.js"></script>
+    <script src="static/script.js"></script>
+  </body>
 </html>

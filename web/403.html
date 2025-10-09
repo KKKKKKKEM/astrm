@@ -2,81 +2,50 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>403 - 禁止访问</title>
+    <link href="static/bootstrap.min.css" rel="stylesheet">
+    <link href="static/style.css" rel="stylesheet">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-            margin: 0;
-            padding: 0;
+        .center-wrap {
+            min-height: 100vh;
             display: flex;
-            justify-content: center;
             align-items: center;
-            height: 100vh;
+            justify-content: center;
+            padding: 24px;
         }
-        .error-container {
-            text-align: center;
-            background-color: white;
-            padding: 20px;
-            box-shadow: 0 0 10px rgba(0,0,0,.1);
-        }
-        h1 {
-            font-size: 4em;
-            color: #d63031;
-            margin: 0;
-        }
-        p {
-            color: #747d8c;
-        }
-        .input-group {
-            margin-top: 20px;
-        }
-        input[type=text] {
-            padding: 10px;
-            width: 200px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-        button {
-            padding: 10px 20px;
-            background-color: #00b894;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-left: 10px;
-        }
-        button:hover {
-            background-color: #00a884;
-        }
+        .error-card { max-width: 560px; width: 100%; }
     </style>
-</head>
+    </head>
 <body>
-
-<div class="error-container">
-    <h1>403</h1>
-    <p>对不起，您无权访问此页面。</p>
-    <div class="input-group">
-        <input type="text" id="entryString" placeholder="请输入您的入口">
-        <button onclick="redirectToEntry()">确认</button>
+<div class="center-wrap">
+    <div class="panel error-card">
+        <div class="panel-body text-center">
+            <div style="font-size: 64px; line-height: 1; color: #ef4444;">403</div>
+            <h1 class="h4 mt-2 mb-1">禁止访问</h1>
+            <div class="subtle mb-3">对不起，您无权访问此页面</div>
+            <div class="d-flex gap-2 justify-content-center align-items-center" style="gap: 8px;">
+                <input type="text" id="entryString" class="form-control" placeholder="请输入您的入口" style="max-width: 260px;">
+                <button class="btn btn-primary" onclick="redirectToEntry()">确认</button>
+            </div>
+            <div class="mt-3">
+                <a href="javascript:history.back()" class="link-secondary">返回上一页</a>
+            </div>
+        </div>
     </div>
-    <a href="javascript:history.back()">返回上一页</a>
-</div>
+    </div>
 
 <script>
-    function redirectToEntry() {
-        var entry = document.getElementById('entryString').value;
-        if(entry) {
-            var currentUrl = window.location.pathname;
-            // Ensure the current URL ends with a slash before appending the entry string
-            if (!currentUrl.endsWith('/')) {
-                currentUrl += '/';
-            }
-            window.location.href = currentUrl + encodeURIComponent(entry);
-        } else {
-            alert("请输入有效的入口");
-        }
-    }
+function redirectToEntry() {
+  var entry = document.getElementById('entryString').value.trim();
+  if (entry) {
+    var currentUrl = window.location.pathname;
+    if (!currentUrl.endsWith('/')) currentUrl += '/';
+    window.location.href = currentUrl + encodeURIComponent(entry);
+  } else {
+    alert('请输入有效的入口');
+  }
+}
 </script>
 
 </body>
