@@ -30,11 +30,11 @@ type SaveOpt struct {
 }
 
 func (opt *SaveOpt) FmtSavePath() string {
-	fromDirs := strings.Split(opt.From, "/")
+	fromDirs := strings.Split(strings.TrimLeft(opt.From, "/"), "/")
 	opt.Dest = strings.ReplaceAll(opt.Dest, "/", string(filepath.Separator))
-	destDirs := strings.Split(opt.Dest, string(filepath.Separator))
-	destDirs = append(destDirs, fromDirs[len(fromDirs)-opt.Deep:]...)
-	return filepath.Join(append(destDirs, strings.ReplaceAll(opt.Name, opt.From, ""))...)
+	targetDir := filepath.Join(append([]string{opt.Dest}, fromDirs[len(fromDirs)-opt.Deep:]...)...)
+
+	return filepath.Join(targetDir, strings.Replace(opt.Name, opt.From, "", -1))	
 }
 
 func (opt *SaveOpt) IsWrite(savePath string, referenceTime time.Time) (state bool) {

@@ -5,6 +5,7 @@ import (
 	"astrm/modules/alist"
 	"astrm/modules/config"
 	"astrm/modules/job"
+	"astrm/modules/local"
 	"astrm/modules/proxy"
 )
 
@@ -13,5 +14,6 @@ func Init() {
 	alist.Init()
 	job.Init()
 	config.Init()
+	local.Init()
 	proxy.Init()
 }

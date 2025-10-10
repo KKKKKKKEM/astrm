@@ -154,9 +154,6 @@ document.addEventListener("DOMContentLoaded", () => {
         ?.classList.contains("active");
       localStorage.setItem("astrm_active_tab", isJobs ? "jobs" : "alist");
     } catch {}
-    __reloadTimer = setTimeout(() => {
-      window.location.reload();
-    }, 800);
   }
 
   const api = {
@@ -294,6 +291,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
     editorContainer.innerHTML = "";
     editorContainer.appendChild(editor);
+
+    // Add path selector button for dest field
+    if (fieldKey === "dest") {
+      const selectorBtn = document.createElement("button");
+      selectorBtn.type = "button";
+      selectorBtn.className = "ui-btn ui-btn-ghost ui-btn-sm";
+      selectorBtn.textContent = "📁 选择本地路径";
+      selectorBtn.style.marginTop = "8px";
+      selectorBtn.style.width = "100%";
+
+      selectorBtn.addEventListener("click", () => {
+        const currentPath = editor.value || "/";
+        const selector = new LocalPathSelector(currentPath);
+        window.currentPathSelector = selector;
+        selector.open((selectedPath) => {
+          editor.value = selectedPath;
+        });
+      });
+
+      editorContainer.appendChild(selectorBtn);
+    }
 
     // Save handler
     const handleSave = async () => {
@@ -449,6 +467,26 @@ document.addEventListener("DOMContentLoaded", () => {
           if (t)
             span.innerHTML = `<pre class="code-block">${esc(newValue)}</pre>`;
           else span.textContent = "";
+
+          // Persist
+          onPersist(key, newValue);
+        });
+        return;
+      }
+
+      // Special handling for 'dest' field - use local path selector
+      if (key === "dest") {
+        const currentPath = item.dest || "/";
+        const selector = new LocalPathSelector(currentPath);
+        window.currentPathSelector = selector;
+
+        selector.open((selectedPath) => {
+          const newValue = selectedPath;
+          item.dest = newValue;
+
+          // Update UI
+          const span = cell.querySelector("span");
+          span.textContent = newValue;
 
           // Persist
           onPersist(key, newValue);
@@ -1018,6 +1056,11 @@ document.addEventListener("DOMContentLoaded", () => {
           this.openPathSelector(item, span, esc, async (newValue) => {
             await onPersist(key, newValue);
           });
+        } else if (this.cfg.resource === "job" && key === "dest") {
+          // Special handling for 'dest' field in jobs - use local path selector
+          this.openLocalPathSelector(item, span, async (newValue) => {
+            await onPersist(key, newValue);
+          });
         } else {
           openMobileFieldEditor(key, displayRaw, type, async (newValue) => {
             await onPersist(key, newValue);
@@ -1073,6 +1116,29 @@ document.addEventListener("DOMContentLoaded", () => {
         if (t)
           span.innerHTML = `<pre class="code-block">${esc(newValue)}</pre>`;
         else span.textContent = "";
+
+        // Persist
+        if (onPersist) {
+          onPersist(newValue);
+        }
+      });
+    }
+
+    openLocalPathSelector(item, span, onPersist) {
+      console.log("openLocalPathSelector called", item);
+
+      const currentPath = item.dest || "/";
+
+      console.log("Creating LocalPathSelector with path:", currentPath);
+      const selector = new LocalPathSelector(currentPath);
+      window.currentPathSelector = selector;
+
+      selector.open((selectedPath) => {
+        const newValue = selectedPath;
+        item.dest = newValue;
+
+        // Update UI
+        span.textContent = newValue;
 
         // Persist
         if (onPersist) {
@@ -1272,6 +1338,47 @@ document.addEventListener("DOMContentLoaded", () => {
           });
 
           wrapper.appendChild(textarea);
+          wrapper.appendChild(selectorBtn);
+
+          fieldGroup.appendChild(label);
+          fieldGroup.appendChild(wrapper);
+          formContainer.appendChild(fieldGroup);
+          continue;
+        }
+
+        // Special handling for 'dest' field - local path selector
+        if (col.key === "dest" && this.cfg.resource === "job") {
+          const wrapper = document.createElement("div");
+          wrapper.style.position = "relative";
+
+          const input = document.createElement("input");
+          input.className = "form-control";
+          input.name = col.key;
+          input.placeholder = placeholderFor(this.cfg.resource, col.key);
+
+          const v = initialData[col.key];
+          if (v) {
+            input.value = v;
+          }
+
+          // Add path selector button
+          const selectorBtn = document.createElement("button");
+          selectorBtn.type = "button";
+          selectorBtn.className = "ui-btn ui-btn-ghost ui-btn-sm";
+          selectorBtn.textContent = "📁 选择本地路径";
+          selectorBtn.style.marginTop = "8px";
+          selectorBtn.style.width = "100%";
+
+          selectorBtn.addEventListener("click", () => {
+            const currentPath = input.value || "/";
+            const selector = new LocalPathSelector(currentPath);
+            window.currentPathSelector = selector;
+            selector.open((selectedPath) => {
+              input.value = selectedPath;
+            });
+          });
+
+          wrapper.appendChild(input);
           wrapper.appendChild(selectorBtn);
 
           fieldGroup.appendChild(label);
@@ -2110,6 +2217,204 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   } catch {}
 
+  // ==================== Local Path Selector ====================
+  class LocalPathSelector {
+    constructor(initialPath = "") {
+      this.currentPath = initialPath || "/";
+      this.pathHistory = [];
+      this.onConfirm = null;
+    }
+
+    async open(onConfirm) {
+      console.log("LocalPathSelector.open called with path:", this.currentPath);
+      this.onConfirm = onConfirm;
+      this.pathHistory = [];
+
+      // Update modal title
+      const modalTitle = document.getElementById("pathSelectorModalLabel");
+      modalTitle.textContent = "选择本地路径";
+
+      // Hide selected paths container (not needed for local paths)
+      const selectedPathsContainer = document.getElementById(
+        "selectedPathsContainer"
+      );
+      selectedPathsContainer.style.display = "none";
+
+      // Hide confirm button (select directly)
+      const confirmBtn = document.getElementById("confirmPathSelectorBtn");
+      confirmBtn.style.display = "none";
+
+      await this.loadDirectory(this.currentPath);
+
+      console.log("Opening pathSelectorModal");
+      openModal("pathSelectorModal");
+    }
+
+    async loadDirectory(path) {
+      console.log("loadDirectory called with path:", path);
+      const loading = document.getElementById("pathListLoading");
+      const list = document.getElementById("pathList");
+
+      loading.style.display = "flex";
+      list.innerHTML = "";
+
+      try {
+        const url = `/api/local/list-dir`;
+        console.log("Fetching:", url, "with params:", { path: path || "/" });
+
+        const response = await api.get(url, {
+          path: path || "/",
+        });
+
+        console.log("API response:", response);
+        const items = response.data || [];
+        console.log("Items count:", items.length);
+        this.renderDirectoryList(items);
+        this.renderBreadcrumb();
+      } catch (error) {
+        console.error("loadDirectory error:", error);
+        showToast("加载目录失败", "error");
+        list.innerHTML =
+          '<div style="padding: 20px; text-align: center; color: var(--muted);">加载失败</div>';
+      } finally {
+        loading.style.display = "none";
+      }
+    }
+
+    renderDirectoryList(items) {
+      const list = document.getElementById("pathList");
+      list.innerHTML = "";
+
+      if (items.length === 0) {
+        list.innerHTML =
+          '<div style="padding: 20px; text-align: center; color: var(--muted);">空目录</div>';
+        return;
+      }
+
+      items.forEach((item) => {
+        const itemEl = document.createElement("div");
+        itemEl.className = "path-item";
+
+        const icon = "📁";
+
+        itemEl.innerHTML = `
+          <span class="path-item-icon">${icon}</span>
+          <span class="path-item-name" title="${item.name}">${item.name}</span>
+          <div class="path-item-actions">
+            <button class="path-item-btn enter-btn">进入</button>
+            <button class="path-item-btn select-btn">选择</button>
+          </div>
+        `;
+
+        // Enter directory
+        const enterBtn = itemEl.querySelector(".enter-btn");
+        enterBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.pathHistory.push(this.currentPath);
+          this.currentPath = item.name;
+          this.loadDirectory(item.name);
+        });
+
+        // Select path
+        const selectBtn = itemEl.querySelector(".select-btn");
+        selectBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (this.onConfirm) {
+            this.onConfirm(item.name);
+          }
+          closeModal("pathSelectorModal");
+        });
+
+        list.appendChild(itemEl);
+      });
+    }
+
+    renderBreadcrumb() {
+      const breadcrumb = document.getElementById("pathBreadcrumb");
+      breadcrumb.innerHTML = "";
+
+      // Parse current path into segments
+      const pathSegments =
+        this.currentPath && this.currentPath !== "/"
+          ? this.currentPath.split("/").filter((s) => s)
+          : [];
+
+      // Root
+      const root = document.createElement("span");
+      root.className = "breadcrumb-item";
+      root.textContent = "/";
+      root.addEventListener("click", () => {
+        this.currentPath = "/";
+        this.pathHistory = [];
+        this.loadDirectory("/");
+      });
+      breadcrumb.appendChild(root);
+
+      // Build path segments
+      let accumulatedPath = "";
+      pathSegments.forEach((segment, index) => {
+        // Separator
+        const separator = document.createElement("span");
+        separator.className = "breadcrumb-separator";
+        separator.textContent = "/";
+        breadcrumb.appendChild(separator);
+
+        // Segment
+        accumulatedPath = accumulatedPath
+          ? `${accumulatedPath}/${segment}`
+          : `/${segment}`;
+        const segmentSpan = document.createElement("span");
+
+        // Last segment is not clickable (current location)
+        if (index === pathSegments.length - 1) {
+          segmentSpan.style.color = "var(--text)";
+          segmentSpan.textContent = segment;
+        } else {
+          // Previous segments are clickable
+          segmentSpan.className = "breadcrumb-item";
+          segmentSpan.textContent = segment;
+          const targetPath = accumulatedPath;
+          segmentSpan.addEventListener("click", () => {
+            // Update path history
+            this.pathHistory = [];
+            this.currentPath = targetPath;
+            this.loadDirectory(targetPath);
+          });
+        }
+
+        breadcrumb.appendChild(segmentSpan);
+      });
+
+      // Back button (if not at root)
+      if (pathSegments.length > 0) {
+        const separator = document.createElement("span");
+        separator.className = "breadcrumb-separator";
+        separator.textContent = "·";
+        breadcrumb.appendChild(separator);
+
+        const back = document.createElement("span");
+        back.className = "breadcrumb-item";
+        back.textContent = "← 返回上一级";
+        back.addEventListener("click", () => {
+          // Go back one level
+          if (pathSegments.length === 1) {
+            // Go to root
+            this.currentPath = "/";
+          } else {
+            // Go to parent directory
+            this.currentPath = "/" + pathSegments.slice(0, -1).join("/");
+          }
+          this.loadDirectory(this.currentPath);
+        });
+        breadcrumb.appendChild(back);
+      }
+    }
+
+    cancel() {
+      closeModal("pathSelectorModal");
+    }
+  }
+
   // ==================== Path Selector ====================
   class PathSelector {
     constructor(jobId, initialPaths = []) {
@@ -2131,6 +2436,20 @@ document.addEventListener("DOMContentLoaded", () => {
       this.onConfirm = onConfirm;
       this.currentPath = "";
       this.pathHistory = [];
+
+      // Update modal title
+      const modalTitle = document.getElementById("pathSelectorModalLabel");
+      modalTitle.textContent = "选择路径";
+
+      // Show selected paths container
+      const selectedPathsContainer = document.getElementById(
+        "selectedPathsContainer"
+      );
+      selectedPathsContainer.style.display = "flex";
+
+      // Show confirm button
+      const confirmBtn = document.getElementById("confirmPathSelectorBtn");
+      confirmBtn.style.display = "block";
 
       this.renderSelectedPaths();
       await this.loadDirectory("");
@@ -2277,6 +2596,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const breadcrumb = document.getElementById("pathBreadcrumb");
       breadcrumb.innerHTML = "";
 
+      // Parse current path into segments
+      const pathSegments = this.currentPath
+        ? this.currentPath.split("/").filter((s) => s)
+        : [];
+
       // Root
       const root = document.createElement("span");
       root.className = "breadcrumb-item";
@@ -2288,21 +2612,43 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       breadcrumb.appendChild(root);
 
-      // Current path
-      if (this.currentPath) {
+      // Build path segments
+      let accumulatedPath = "";
+      pathSegments.forEach((segment, index) => {
+        // Separator
         const separator = document.createElement("span");
         separator.className = "breadcrumb-separator";
         separator.textContent = "/";
         breadcrumb.appendChild(separator);
 
-        const current = document.createElement("span");
-        current.style.color = "var(--text)";
-        current.textContent = this.currentPath;
-        breadcrumb.appendChild(current);
-      }
+        // Segment
+        accumulatedPath = accumulatedPath
+          ? `${accumulatedPath}/${segment}`
+          : segment;
+        const segmentSpan = document.createElement("span");
 
-      // Back button
-      if (this.pathHistory.length > 0) {
+        // Last segment is not clickable (current location)
+        if (index === pathSegments.length - 1) {
+          segmentSpan.style.color = "var(--text)";
+          segmentSpan.textContent = segment;
+        } else {
+          // Previous segments are clickable
+          segmentSpan.className = "breadcrumb-item";
+          segmentSpan.textContent = segment;
+          const targetPath = accumulatedPath;
+          segmentSpan.addEventListener("click", () => {
+            // Update path history
+            this.pathHistory = [];
+            this.currentPath = targetPath;
+            this.loadDirectory(targetPath);
+          });
+        }
+
+        breadcrumb.appendChild(segmentSpan);
+      });
+
+      // Back button (if not at root)
+      if (pathSegments.length > 0) {
         const separator = document.createElement("span");
         separator.className = "breadcrumb-separator";
         separator.textContent = "·";
@@ -2310,9 +2656,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const back = document.createElement("span");
         back.className = "breadcrumb-item";
-        back.textContent = "← 返回";
+        back.textContent = "← 返回上一级";
         back.addEventListener("click", () => {
-          this.currentPath = this.pathHistory.pop();
+          // Go back one level
+          if (pathSegments.length === 1) {
+            // Go to root
+            this.currentPath = "";
+          } else {
+            // Go to parent directory
+            this.currentPath = pathSegments.slice(0, -1).join("/");
+          }
           this.loadDirectory(this.currentPath);
         });
         breadcrumb.appendChild(back);
