@@ -4,6 +4,7 @@ import (
 	"astrm/server"
 	"astrm/service/alist"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -54,4 +55,26 @@ func del(c *gin.Context) {
 	}
 	c.JSON(http.StatusNotFound, gin.H{"code": -1, "msg": "alist not found"})
 
+}
+
+func listItem(c *gin.Context) {
+	idxStr := c.Param("idx")
+	// 从 url 参数中获取 path, page, pageSize, refresh
+	root := c.Query("root")
+	pageStr := c.DefaultQuery("page", "1")
+	pageSizeStr := c.DefaultQuery("pageSize", "0")
+	refreshStr := c.DefaultQuery("refresh", "false")
+	idx, _ := strconv.Atoi(idxStr)
+	page, _ := strconv.Atoi(pageStr)
+	pageSize, _ := strconv.Atoi(pageSizeStr)
+	refresh, _ := strconv.ParseBool(refreshStr)
+
+	alist := server.Cfg.Alist[idx]
+
+	data, err := alist.List(c, root, page, pageSize, refresh)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 1, "msg": err.Error(), "data": nil})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "success", "data": data})
 }

@@ -160,8 +160,13 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const api = {
-    async get(url) {
-      const res = await fetch(url);
+    async get(url, params) {
+      let fullUrl = url;
+      if (params) {
+        const queryString = new URLSearchParams(params).toString();
+        fullUrl = `${url}?${queryString}`;
+      }
+      const res = await fetch(fullUrl);
       return res.json();
     },
     async post(url, data) {
@@ -423,6 +428,34 @@ document.addEventListener("DOMContentLoaded", () => {
     const startInlineEdit = () => {
       if (cell.__editing) return;
 
+      // Special handling for 'from' field - use path selector
+      if (key === "from" && item.id !== undefined) {
+        const currentPaths = item.from
+          ? item.from
+              .split(/[\n,]/)
+              .map((p) => p.trim())
+              .filter((p) => p)
+          : [];
+        const selector = new PathSelector(item.id, currentPaths);
+        window.currentPathSelector = selector;
+
+        selector.open((selectedPaths) => {
+          const newValue = selectedPaths.join("\n");
+          item.from = newValue;
+
+          // Update UI
+          const span = cell.querySelector("span");
+          const t = String(newValue).trim();
+          if (t)
+            span.innerHTML = `<pre class="code-block">${esc(newValue)}</pre>`;
+          else span.textContent = "";
+
+          // Persist
+          onPersist(key, newValue);
+        });
+        return;
+      }
+
       // Mobile: use full-screen drawer editor
       if (window.innerWidth <= 768) {
         openMobileFieldEditor(key, displayRaw, type, async (newValue) => {
@@ -459,26 +492,62 @@ document.addEventListener("DOMContentLoaded", () => {
       cell.__editing = true;
       cell.setAttribute("data-editing", "true");
 
-      const editorTag =
-        type === "json" || ["from", "dest", "opts", "spec"].includes(key)
-          ? "textarea"
-          : "input";
-      const editor = document.createElement(editorTag);
-      editor.className = "form-control inline-editor";
-      editor.style.width = "100%";
+      let editor;
 
-      if (editorTag === "textarea") {
-        editor.rows = 6;
+      // Special handling for 'alist' field - use dropdown
+      if (key === "alist") {
+        editor = document.createElement("select");
+        editor.className = "form-control inline-editor";
+        editor.style.width = "100%";
+        editor.autocomplete = "off";
+
+        // Add default option
+        const defaultOption = document.createElement("option");
+        defaultOption.value = "";
+        defaultOption.textContent = "选择...";
+        editor.appendChild(defaultOption);
+
+        // Fetch and populate
+        api.get("/api/alist").then((alists) => {
+          alists.forEach((alist, index) => {
+            const option = document.createElement("option");
+            option.value = index;
+            option.textContent = `${index} - ${alist.name}`;
+            editor.appendChild(option);
+          });
+
+          // Set current value
+          if (displayRaw !== undefined && displayRaw !== "") {
+            editor.value = displayRaw;
+          }
+        });
+      } else {
+        const editorTag =
+          type === "json" || ["from", "dest", "opts", "spec"].includes(key)
+            ? "textarea"
+            : "input";
+        editor = document.createElement(editorTag);
+        editor.className = "form-control inline-editor";
+        editor.style.width = "100%";
+
+        if (editorTag === "textarea") {
+          editor.rows = 6;
+        }
+
+        editor.value = displayRaw ?? "";
       }
-
-      editor.value = displayRaw ?? "";
 
       const span = cell.querySelector("span");
       span.style.display = "none";
       cell.appendChild(editor);
 
       editor.focus();
-      if (editor.select) editor.select();
+      // Select text for input/textarea only (not select)
+      if (editor.tagName !== "SELECT" && typeof editor.select === "function") {
+        editor.select();
+      }
+
+      const isTextarea = editor.tagName === "TEXTAREA";
 
       const commit = async () => {
         if (!cell.__editing) return;
@@ -536,7 +605,7 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       const onKey = (e) => {
-        if (e.key === "Enter" && !(e.shiftKey && editorTag === "textarea")) {
+        if (e.key === "Enter" && !(e.shiftKey && isTextarea)) {
           e.preventDefault();
           commit();
         } else if (e.key === "Escape") {
@@ -780,6 +849,25 @@ document.addEventListener("DOMContentLoaded", () => {
         const card = this.createMobileCard(item);
         cardContainer.appendChild(card);
       });
+
+      // Bind floating add button if configured
+      if (this.cfg.addButtonId) {
+        const floatingBtn = document.getElementById(this.cfg.addButtonId);
+        if (floatingBtn) {
+          // Store the display style before cloning
+          const displayStyle = floatingBtn.style.display;
+
+          // Remove existing listeners to avoid duplicates
+          const newBtn = floatingBtn.cloneNode(true);
+          floatingBtn.parentNode.replaceChild(newBtn, floatingBtn);
+
+          // Restore display style
+          newBtn.style.display = displayStyle;
+
+          // Add click listener - use drawer for mobile
+          newBtn.addEventListener("click", () => this.openMobileAddDrawer({}));
+        }
+      }
     }
 
     createMobileCard(item) {
@@ -857,7 +945,7 @@ document.addEventListener("DOMContentLoaded", () => {
         createButton(
           "复制",
           "ui-btn ui-btn-ghost ui-btn-sm",
-          () => this.openInlineAddRow(item),
+          () => this.openMobileAddDrawer(item),
           { title: "Copy", icon: icons.copy }
         )
       );
@@ -925,21 +1013,72 @@ document.addEventListener("DOMContentLoaded", () => {
       // Make it clickable to edit
       span.style.cursor = "pointer";
       span.addEventListener("click", () => {
-        openMobileFieldEditor(key, displayRaw, type, async (newValue) => {
-          await onPersist(key, newValue);
-          // Update UI
-          if (["from", "dest", "opts", "spec"].includes(key)) {
-            const t = String(newValue).trim();
-            if (t)
-              span.innerHTML = `<pre class="code-block">${esc(newValue)}</pre>`;
-            else span.textContent = "";
-          } else {
-            span.textContent = newValue;
-          }
-        });
+        // Special handling for 'from' field in jobs - use path selector
+        if (this.cfg.resource === "job" && key === "from") {
+          this.openPathSelector(item, span, esc, async (newValue) => {
+            await onPersist(key, newValue);
+          });
+        } else {
+          openMobileFieldEditor(key, displayRaw, type, async (newValue) => {
+            await onPersist(key, newValue);
+            // Update UI
+            if (["from", "dest", "opts", "spec"].includes(key)) {
+              const t = String(newValue).trim();
+              if (t)
+                span.innerHTML = `<pre class="code-block">${esc(
+                  newValue
+                )}</pre>`;
+              else span.textContent = "";
+            } else {
+              span.textContent = newValue;
+            }
+          });
+        }
       });
 
       return span;
+    }
+
+    openPathSelector(item, span, esc, onPersist) {
+      console.log("openPathSelector called", item);
+
+      if (!item.id && item.id !== 0) {
+        showToast("无法打开路径选择器：Job ID 不存在", "error");
+        console.error("Job ID is missing:", item);
+        return;
+      }
+
+      const currentPaths = item.from
+        ? item.from
+            .split(/[\n,]/)
+            .map((p) => p.trim())
+            .filter((p) => p)
+        : [];
+
+      console.log(
+        "Creating PathSelector with jobId:",
+        item.id,
+        "paths:",
+        currentPaths
+      );
+      const selector = new PathSelector(item.id, currentPaths);
+      window.currentPathSelector = selector;
+
+      selector.open((selectedPaths) => {
+        const newValue = selectedPaths.join("\n");
+        item.from = newValue;
+
+        // Update UI
+        const t = String(newValue).trim();
+        if (t)
+          span.innerHTML = `<pre class="code-block">${esc(newValue)}</pre>`;
+        else span.textContent = "";
+
+        // Persist
+        if (onPersist) {
+          onPersist(newValue);
+        }
+      });
     }
 
     renderDesktopTable(items) {
@@ -1020,9 +1159,17 @@ document.addEventListener("DOMContentLoaded", () => {
       if (this.cfg.addButtonId) {
         const floatingBtn = document.getElementById(this.cfg.addButtonId);
         if (floatingBtn) {
+          // Store the display style before cloning
+          const displayStyle = floatingBtn.style.display;
+
           // Remove existing listeners to avoid duplicates
           const newBtn = floatingBtn.cloneNode(true);
           floatingBtn.parentNode.replaceChild(newBtn, floatingBtn);
+
+          // Restore display style
+          newBtn.style.display = displayStyle;
+
+          // Add click listener
           newBtn.addEventListener("click", () => this.openInlineAddRow({}));
         }
       }
@@ -1053,6 +1200,200 @@ document.addEventListener("DOMContentLoaded", () => {
       this.openInlineAddRow(initialData);
     }
 
+    openMobileAddDrawer(initialData = {}) {
+      const modalTitle = document.getElementById("addEditModalLabel");
+      const formContainer = document.getElementById("formFieldsContainer");
+
+      modalTitle.textContent = initialData[this.cfg.idKey] ? "编辑" : "添加";
+      formContainer.innerHTML = "";
+
+      // Build form fields
+      for (const col of this.cfg.columns) {
+        const fieldGroup = document.createElement("div");
+        fieldGroup.className = "form-group";
+
+        const label = document.createElement("label");
+        label.textContent = col.label || col.key;
+        label.className = "form-label";
+
+        // Special handling for 'from' field - use textarea with path selector button
+        if (col.key === "from" && this.cfg.resource === "job") {
+          const wrapper = document.createElement("div");
+          wrapper.style.position = "relative";
+
+          const textarea = document.createElement("textarea");
+          textarea.className = "form-control";
+          textarea.name = col.key;
+          textarea.rows = 6;
+          textarea.placeholder = placeholderFor(this.cfg.resource, col.key);
+
+          const v = initialData[col.key];
+          if (v) {
+            textarea.value = v;
+          }
+
+          // Always add path selector button
+          const selectorBtn = document.createElement("button");
+          selectorBtn.type = "button";
+          selectorBtn.className = "ui-btn ui-btn-ghost ui-btn-sm";
+          selectorBtn.textContent = "📁 选择路径";
+          selectorBtn.style.marginTop = "8px";
+          selectorBtn.style.width = "100%";
+
+          selectorBtn.addEventListener("click", () => {
+            // Get the selected alist index from the form
+            let alistSelect = formContainer.querySelector('[name="alist"]');
+            if (!alistSelect) {
+              alistSelect = formContainer.querySelector(
+                '[data-field-name="alist"]'
+              );
+            }
+            const alistIndex = alistSelect ? alistSelect.value : "";
+
+            if (!alistIndex && alistIndex !== "0") {
+              showToast("请先选择 Alist", "info");
+              return;
+            }
+
+            const currentPaths = textarea.value
+              .split(/[\n,]/)
+              .map((p) => p.trim())
+              .filter((p) => p);
+
+            // Use alist index as a temporary ID for path browsing
+            const selector = new PathSelector(
+              initialData.id || `temp_${alistIndex}`,
+              currentPaths
+            );
+            window.currentPathSelector = selector;
+            selector.open((selectedPaths) => {
+              textarea.value = selectedPaths.join("\n");
+            });
+          });
+
+          wrapper.appendChild(textarea);
+          wrapper.appendChild(selectorBtn);
+
+          fieldGroup.appendChild(label);
+          fieldGroup.appendChild(wrapper);
+          formContainer.appendChild(fieldGroup);
+          continue;
+        }
+
+        // Special handling for 'alist' field - use dropdown selector
+        if (col.key === "alist" && this.cfg.resource === "job") {
+          const select = document.createElement("select");
+          select.className = "form-control";
+          // Use random name to prevent autocomplete
+          select.name = `field_${Math.random().toString(36).substring(7)}`;
+          select.setAttribute("data-field-name", col.key);
+          select.autocomplete = "new-password"; // Trick to disable autocomplete
+          select.setAttribute("role", "presentation");
+
+          // Add default option
+          const defaultOption = document.createElement("option");
+          defaultOption.value = "";
+          defaultOption.textContent = "选择 Alist...";
+          select.appendChild(defaultOption);
+
+          // Fetch alist configurations and populate dropdown
+          api
+            .get("/api/alist")
+            .then((alists) => {
+              alists.forEach((alist, index) => {
+                const option = document.createElement("option");
+                option.value = index;
+                option.textContent = `${index} - ${alist.name} (${alist.endpoint})`;
+                select.appendChild(option);
+              });
+
+              // Set initial value if exists
+              const v = initialData[col.key];
+              if (v !== undefined) {
+                select.value = v;
+              }
+            })
+            .catch(() => {
+              showToast("加载 Alist 列表失败", "error");
+            });
+
+          fieldGroup.appendChild(label);
+          fieldGroup.appendChild(select);
+          formContainer.appendChild(fieldGroup);
+          continue;
+        }
+
+        const inputTag =
+          col.type === "json" ||
+          ["from", "dest", "opts", "spec"].includes(col.key)
+            ? "textarea"
+            : "input";
+        const input = document.createElement(inputTag);
+        input.className = "form-control";
+        input.name = col.key;
+        input.placeholder = placeholderFor(this.cfg.resource, col.key);
+
+        if (inputTag === "textarea") {
+          input.rows = 6;
+        }
+
+        const v = initialData[col.key];
+        if (v !== undefined) {
+          input.value =
+            col.type === "json" ? JSON.stringify(v, null, 2) : String(v);
+        }
+
+        fieldGroup.appendChild(label);
+        fieldGroup.appendChild(input);
+        formContainer.appendChild(fieldGroup);
+      }
+
+      // Setup save button
+      const saveBtn = document.getElementById("saveItemBtn");
+      const cancelBtn = document.getElementById("cancelItemBtn");
+
+      // Remove old listeners
+      const newSaveBtn = saveBtn.cloneNode(true);
+      const newCancelBtn = cancelBtn.cloneNode(true);
+      saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+      cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+      newSaveBtn.addEventListener("click", async () => {
+        const payload = {};
+        for (const col of this.cfg.columns) {
+          // Try to find by name first, then by data-field-name
+          let el = formContainer.querySelector(`[name="${col.key}"]`);
+          if (!el) {
+            el = formContainer.querySelector(`[data-field-name="${col.key}"]`);
+          }
+
+          if (!el) continue;
+
+          const raw = el.value ?? "";
+
+          try {
+            if (col.type === "int")
+              payload[col.key] = parseInt(String(raw), 10);
+            else if (col.type === "json")
+              payload[col.key] = raw ? JSON.parse(String(raw)) : {};
+            else payload[col.key] = String(raw);
+          } catch (e) {
+            showToast(`Invalid ${col.key}`, "error");
+            return;
+          }
+        }
+        await api.post(this.cfg.endpoint, payload);
+        closeModal("addEditModal");
+        await this.load();
+      });
+
+      newCancelBtn.addEventListener("click", () => {
+        closeModal("addEditModal");
+      });
+
+      openModal("addEditModal");
+    }
+
     openInlineAddRow(initialData = {}) {
       const tbody = document.querySelector(`#${this.cfg.tableId} tbody`);
       const fields = this.cfg.createFields ?? this.cfg.columns;
@@ -1067,6 +1408,40 @@ document.addEventListener("DOMContentLoaded", () => {
       for (const col of this.cfg.columns) {
         const td = document.createElement("td");
         td.className = "editable";
+
+        // Special handling for 'alist' field - use dropdown
+        if (col.key === "alist" && this.cfg.resource === "job") {
+          const select = document.createElement("select");
+          select.className = "form-control";
+          select.name = col.key;
+          select.autocomplete = "off";
+
+          // Add default option
+          const defaultOption = document.createElement("option");
+          defaultOption.value = "";
+          defaultOption.textContent = "选择...";
+          select.appendChild(defaultOption);
+
+          // Fetch and populate
+          api.get("/api/alist").then((alists) => {
+            alists.forEach((alist, index) => {
+              const option = document.createElement("option");
+              option.value = index;
+              option.textContent = `${index} - ${alist.name}`;
+              select.appendChild(option);
+            });
+
+            const v = initialData[col.key];
+            if (v !== undefined) {
+              select.value = v;
+            }
+          });
+
+          td.appendChild(select);
+          tr.appendChild(td);
+          continue;
+        }
+
         const inputTag =
           col.type === "json" ||
           ["from", "dest", "opts", "spec"].includes(col.key)
@@ -1221,11 +1596,11 @@ document.addEventListener("DOMContentLoaded", () => {
     idKey: "id",
     columns: [
       { key: "name", type: "text", label: "名称" },
+      { key: "alist", type: "int", label: "Alist" },
       { key: "from", type: "text", label: "源路径" },
       { key: "dest", type: "text", label: "目标路径" },
       { key: "mode", type: "text", label: "模式" },
       { key: "opts", type: "json", label: "选项" },
-      { key: "alist", type: "int", label: "Alist" },
       { key: "spec", type: "text", label: "定时规则" },
       { key: "concurrency", type: "int", label: "并发数" },
     ],
@@ -1240,10 +1615,17 @@ document.addEventListener("DOMContentLoaded", () => {
       { key: "concurrency", type: "int", label: "Concurrency" },
     ],
     extraActions: (cell, item) => {
+      // Check if it's mobile (footer) or desktop (action-cell)
+      const isMobile = cell.classList.contains("data-card-footer");
+      const buttonText = isMobile ? "运行" : "";
+      const buttonClass = isMobile
+        ? "ui-btn ui-btn-success ui-btn-sm"
+        : "ui-btn ui-btn-success ui-btn-sm ui-icon-btn";
+
       cell.prepend(
         createButton(
-          "",
-          "ui-btn ui-btn-success ui-btn-sm ui-icon-btn",
+          buttonText,
+          buttonClass,
           async () => {
             await api.post(`/api/job/${item.id}`, {});
           },
@@ -1727,6 +2109,245 @@ document.addEventListener("DOMContentLoaded", () => {
       setTimeout(loadEmbyConfig, 200);
     }
   } catch {}
+
+  // ==================== Path Selector ====================
+  class PathSelector {
+    constructor(jobId, initialPaths = []) {
+      this.jobId = jobId;
+      this.currentPath = "";
+      this.selectedPaths = new Set(initialPaths);
+      this.pathHistory = [];
+      this.onConfirm = null;
+
+      // Detect if using alist index (temp_X) or job ID
+      this.isAlistMode = String(jobId).startsWith("temp_");
+      this.alistIndex = this.isAlistMode
+        ? String(jobId).replace("temp_", "")
+        : null;
+    }
+
+    async open(onConfirm) {
+      console.log("PathSelector.open called with jobId:", this.jobId);
+      this.onConfirm = onConfirm;
+      this.currentPath = "";
+      this.pathHistory = [];
+
+      this.renderSelectedPaths();
+      await this.loadDirectory("");
+
+      console.log("Opening pathSelectorModal");
+      openModal("pathSelectorModal");
+    }
+
+    async loadDirectory(path) {
+      console.log("loadDirectory called with path:", path);
+      const loading = document.getElementById("pathListLoading");
+      const list = document.getElementById("pathList");
+
+      loading.style.display = "flex";
+      list.innerHTML = "";
+
+      try {
+        // Choose API endpoint based on mode
+        const url = this.isAlistMode
+          ? `/api/alist/${this.alistIndex}/list-item`
+          : `/api/job/${this.jobId}/list-item`;
+
+        console.log("Fetching:", url, "with params:", { root: path || "" });
+        console.log("Mode:", this.isAlistMode ? "Alist" : "Job");
+
+        const response = await api.get(url, {
+          root: path || "",
+        });
+
+        console.log("API response:", response);
+        const items = response.data || [];
+        console.log("Items count:", items.length);
+        this.renderDirectoryList(items);
+        this.renderBreadcrumb();
+      } catch (error) {
+        console.error("loadDirectory error:", error);
+        showToast("加载目录失败", "error");
+        list.innerHTML =
+          '<div style="padding: 20px; text-align: center; color: var(--muted);">加载失败</div>';
+      } finally {
+        loading.style.display = "none";
+      }
+    }
+
+    renderDirectoryList(items) {
+      const list = document.getElementById("pathList");
+      list.innerHTML = "";
+
+      if (items.length === 0) {
+        list.innerHTML =
+          '<div style="padding: 20px; text-align: center; color: var(--muted);">空目录</div>';
+        return;
+      }
+
+      items.forEach((item) => {
+        const itemEl = document.createElement("div");
+        itemEl.className = "path-item";
+
+        const icon = item.is_dir ? "📁" : "📄";
+        const isSelected = this.selectedPaths.has(item.name);
+
+        itemEl.innerHTML = `
+          <span class="path-item-icon">${icon}</span>
+          <span class="path-item-name" title="${item.name}">${item.name}</span>
+          <div class="path-item-actions">
+            ${
+              item.is_dir
+                ? `<button class="path-item-btn enter-btn">进入</button>`
+                : ""
+            }
+            <button class="path-item-btn select-btn ${
+              isSelected ? "selected" : ""
+            }">${isSelected ? "已选" : "选择"}</button>
+          </div>
+        `;
+
+        // Enter directory
+        if (item.is_dir) {
+          const enterBtn = itemEl.querySelector(".enter-btn");
+          enterBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.pathHistory.push(this.currentPath);
+            this.currentPath = item.name;
+            this.loadDirectory(item.name);
+          });
+        }
+
+        // Select path
+        const selectBtn = itemEl.querySelector(".select-btn");
+        selectBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.togglePath(item.name, selectBtn);
+        });
+
+        list.appendChild(itemEl);
+      });
+    }
+
+    togglePath(path, button) {
+      if (this.selectedPaths.has(path)) {
+        this.selectedPaths.delete(path);
+        button.textContent = "选择";
+        button.classList.remove("selected");
+      } else {
+        this.selectedPaths.add(path);
+        button.textContent = "已选";
+        button.classList.add("selected");
+      }
+      this.renderSelectedPaths();
+    }
+
+    renderSelectedPaths() {
+      const container = document.getElementById("selectedPathsContainer");
+      container.innerHTML = "";
+
+      this.selectedPaths.forEach((path) => {
+        const tag = document.createElement("div");
+        tag.className = "path-tag";
+        tag.innerHTML = `
+          <span class="path-tag-text" title="${path}">${path}</span>
+          <span class="path-tag-remove">×</span>
+        `;
+
+        tag.querySelector(".path-tag-remove").addEventListener("click", () => {
+          this.selectedPaths.delete(path);
+          this.renderSelectedPaths();
+          // Update button state in list
+          const buttons = document.querySelectorAll(".select-btn");
+          buttons.forEach((btn) => {
+            const item = btn.closest(".path-item");
+            const itemName = item.querySelector(".path-item-name").textContent;
+            if (itemName === path) {
+              btn.textContent = "选择";
+              btn.classList.remove("selected");
+            }
+          });
+        });
+
+        container.appendChild(tag);
+      });
+    }
+
+    renderBreadcrumb() {
+      const breadcrumb = document.getElementById("pathBreadcrumb");
+      breadcrumb.innerHTML = "";
+
+      // Root
+      const root = document.createElement("span");
+      root.className = "breadcrumb-item";
+      root.textContent = "根目录";
+      root.addEventListener("click", () => {
+        this.currentPath = "";
+        this.pathHistory = [];
+        this.loadDirectory("");
+      });
+      breadcrumb.appendChild(root);
+
+      // Current path
+      if (this.currentPath) {
+        const separator = document.createElement("span");
+        separator.className = "breadcrumb-separator";
+        separator.textContent = "/";
+        breadcrumb.appendChild(separator);
+
+        const current = document.createElement("span");
+        current.style.color = "var(--text)";
+        current.textContent = this.currentPath;
+        breadcrumb.appendChild(current);
+      }
+
+      // Back button
+      if (this.pathHistory.length > 0) {
+        const separator = document.createElement("span");
+        separator.className = "breadcrumb-separator";
+        separator.textContent = "·";
+        breadcrumb.appendChild(separator);
+
+        const back = document.createElement("span");
+        back.className = "breadcrumb-item";
+        back.textContent = "← 返回";
+        back.addEventListener("click", () => {
+          this.currentPath = this.pathHistory.pop();
+          this.loadDirectory(this.currentPath);
+        });
+        breadcrumb.appendChild(back);
+      }
+    }
+
+    confirm() {
+      if (this.onConfirm) {
+        // Join paths with newline instead of comma
+        this.onConfirm(Array.from(this.selectedPaths));
+      }
+      closeModal("pathSelectorModal");
+    }
+
+    cancel() {
+      closeModal("pathSelectorModal");
+    }
+  }
+
+  // Path selector event listeners
+  document
+    .getElementById("confirmPathSelectorBtn")
+    .addEventListener("click", () => {
+      if (window.currentPathSelector) {
+        window.currentPathSelector.confirm();
+      }
+    });
+
+  document
+    .getElementById("cancelPathSelectorBtn")
+    .addEventListener("click", () => {
+      if (window.currentPathSelector) {
+        window.currentPathSelector.cancel();
+      }
+    });
 
   // No top Add buttons; use inline add-rows
 

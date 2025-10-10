@@ -4,6 +4,7 @@ import (
 	"astrm/server"
 	"astrm/service/job"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -12,6 +13,7 @@ import (
 func list(c *gin.Context) {
 	c.JSON(http.StatusOK, server.Cfg.Jobs)
 }
+
 
 func create(c *gin.Context) {
 	var item = job.Job{Id: uuid.NewString()}
@@ -89,4 +91,33 @@ func modify(c *gin.Context) {
 
 	}
 
+}
+
+func listItem(c *gin.Context) {
+	jobId := c.Param("id")
+	// 从 url 参数中获取 path, page, pageSize, refresh
+	root := c.Query("root")
+	pageStr := c.DefaultQuery("page", "1")
+	pageSizeStr := c.DefaultQuery("pageSize", "0")
+	refreshStr := c.DefaultQuery("refresh", "false")
+	page, _ := strconv.Atoi(pageStr)
+	pageSize, _ := strconv.Atoi(pageSizeStr)
+	refresh, _ := strconv.ParseBool(refreshStr)
+
+	idx, thisJob := server.Cfg.FindJob(&job.Job{Id: jobId})
+	if idx != -1 {
+		alistIdx := thisJob.Alist
+		alist := server.Cfg.Alist[alistIdx]
+
+		data, err := alist.List(c, root , page , pageSize , refresh )
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"code": 1, "msg": err.Error(), "data": nil})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "success", "data": data})
+
+	} else {
+		c.JSON(http.StatusNotFound, gin.H{"code": -1, "msg": "Job not found"})
+
+	}
 }

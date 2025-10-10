@@ -329,13 +329,31 @@ body {
     pointer-events: none;
   }
 
-  /* Compact action buttons on mobile */
+  /* Compact action buttons on mobile - vertical layout */
   .action-cell {
     min-width: 90px;
+    width: 90px;
     position: sticky;
     right: 0;
     background: var(--panel);
     box-shadow: -2px 0 4px rgba(0, 0, 0, 0.05);
+    padding: 4px !important;
+    vertical-align: top;
+  }
+
+  .action-cell .ui-icon-btn {
+    width: 100%;
+    margin: 2px 0;
+    font-size: 12px;
+    display: block;
+  }
+
+  .action-cell .ui-icon-btn:first-child {
+    margin-top: 0;
+  }
+
+  .action-cell .ui-icon-btn:last-child {
+    margin-bottom: 0;
   }
 
   .action-btn {
@@ -869,8 +887,8 @@ html[data-theme="dark"] .data-card-value .code-block {
   padding-top: 12px;
   border-top: 1px solid rgba(0, 0, 0, 0.06);
   display: flex;
+  flex-direction: column;
   gap: 6px;
-  justify-content: flex-end;
   background: rgba(0, 0, 0, 0.01);
 }
 
@@ -880,10 +898,10 @@ html[data-theme="dark"] .data-card-footer {
 }
 
 .data-card-footer .ui-btn {
-  flex: 0 0 auto;
-  min-width: 70px;
+  width: 100%;
   font-size: 13px;
-  padding: 6px 12px;
+  padding: 8px 12px;
+  justify-content: center;
 }
 
 table.table {
@@ -1003,18 +1021,244 @@ html[data-theme="dark"] .action-item {
   flex: 1;
 }
 
-/* Actions cell - full width buttons, one per row */
-.actions-cell {
-  padding: 4px !important;
-  min-width: 80px;
+/* Mobile: Emby actions cell - vertical layout */
+@media (max-width: 768px) {
+  /* Hide transcode and finalURL/rawURL columns on mobile */
+  #httpStrmTable th:nth-child(4),
+  #httpStrmTable td:nth-child(4),
+  #httpStrmTable th:nth-child(5),
+  #httpStrmTable td:nth-child(5),
+  #alistStrmTable th:nth-child(5),
+  #alistStrmTable td:nth-child(5),
+  #alistStrmTable th:nth-child(6),
+  #alistStrmTable td:nth-child(6) {
+    display: none;
+  }
+
+  /* Hide actions (rules) column on mobile to save space */
+  #httpStrmTable th:nth-child(3),
+  #httpStrmTable td:nth-child(3),
+  #alistStrmTable th:nth-child(3),
+  #alistStrmTable td:nth-child(3) {
+    display: none;
+  }
+
+  /* Actions cell: fixed width and sticky on mobile */
+  .actions-cell {
+    padding: 4px !important;
+    min-width: 90px;
+    width: 90px;
+    position: sticky;
+    right: 0;
+    background: var(--bg);
+    box-shadow: -2px 0 4px rgba(0, 0, 0, 0.05);
+    vertical-align: top;
+  }
+
+  .actions-cell .ui-icon-btn {
+    width: 100%;
+    margin: 2px 0;
+    display: block;
+  }
+
+  .actions-cell .ui-icon-btn:first-child {
+    margin-top: 0;
+  }
+
+  .actions-cell .ui-icon-btn:last-child {
+    margin-bottom: 0;
+  }
+
+  html[data-theme="dark"] .actions-cell {
+    box-shadow: -2px 0 4px rgba(0, 0, 0, 0.2);
+  }
 }
 
-.actions-cell .ui-icon-btn {
-  width: 100%;
-  margin: 2px 0;
-  justify-content: center;
+/* PC: Emby actions cell - vertical layout */
+@media (min-width: 769px) {
+  .actions-cell {
+    padding: 4px !important;
+    min-width: 90px;
+    width: 90px;
+  }
+
+  .actions-cell .ui-icon-btn {
+    width: 100%;
+    margin: 2px 0;
+    justify-content: center;
+    display: flex;
+    align-items: center;
+  }
+}
+
+/* Path Selector Styles */
+.selected-paths {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  min-height: 40px;
+  padding: 8px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.01);
+}
+
+html[data-theme="dark"] .selected-paths {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.selected-paths:empty::before {
+  content: "未选择路径";
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.path-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-radius: 6px;
+  font-size: 13px;
+  max-width: 100%;
+}
+
+.path-tag-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.path-tag-remove {
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+  flex-shrink: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.path-tag-remove:hover {
+  opacity: 1;
+}
+
+.path-breadcrumb {
   display: flex;
   align-items: center;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 6px;
+  font-size: 14px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+html[data-theme="dark"] .path-breadcrumb {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.breadcrumb-item {
+  cursor: pointer;
+  color: var(--accent);
+  transition: opacity 0.2s;
+}
+
+.breadcrumb-item:hover {
+  opacity: 0.7;
+  text-decoration: underline;
+}
+
+.breadcrumb-separator {
+  color: var(--muted);
+  margin: 0 4px;
+}
+
+.path-list-container {
+  position: relative;
+  min-height: 300px;
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.path-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.path-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.path-item:last-child {
+  border-bottom: none;
+}
+
+.path-item:hover {
+  background: var(--row-hover);
+}
+
+.path-item-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.path-item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.path-item-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.path-item-btn {
+  padding: 4px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.path-item-btn:hover {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+}
+
+.path-item-btn.selected {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+}
+
+.path-list-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--muted);
+  font-size: 14px;
 }
 
 table.ui-table {
@@ -1205,11 +1449,22 @@ td.editable > span {
   background: var(--row-hover);
 }
 
-.action-cell {
-  width: auto;
-  min-width: 100px;
-  padding: 8px;
-  vertical-align: middle;
+/* PC: action-cell vertical layout */
+@media (min-width: 769px) {
+  .action-cell {
+    width: auto;
+    min-width: 100px;
+    padding: 8px;
+    vertical-align: middle;
+  }
+
+  .action-cell .ui-icon-btn {
+    width: 100%;
+    margin: 2px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
 }
 
 .action-btn {
@@ -1460,6 +1715,30 @@ textarea.form-control {
   min-height: 120px;
   resize: vertical;
   line-height: 1.5;
+}
+
+select.form-control {
+  font-size: 16px;
+  padding: 12px 14px;
+  min-height: 48px;
+  cursor: pointer;
+  /* Use native appearance on mobile for better UX */
+  -webkit-appearance: menulist;
+  -moz-appearance: menulist;
+  appearance: menulist;
+}
+
+/* Mobile specific select styling */
+@media (max-width: 768px) {
+  select.form-control {
+    font-size: 18px;
+    min-height: 52px;
+    padding: 14px 16px;
+    /* Ensure native appearance on mobile */
+    -webkit-appearance: menulist;
+    -moz-appearance: menulist;
+    appearance: menulist;
+  }
 }
 
 /* Inline editing in table cells */

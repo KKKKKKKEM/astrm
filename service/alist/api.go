@@ -275,41 +275,55 @@ func (a *Server) FsList(ctx context.Context, path string, recursion bool, opts *
 		for len(pending) > 0 {
 			path := pending[0]
 			pending = pending[1:]
-			data := fmt.Sprintf(`{"path":"%s","password":"","page":1,"per_page":0,"refresh":%t}`, path, opts.Refresh)
-			result, err := a.Json(ctx, "api/fs/list", "POST", data, map[string]any{"Content-Type": "application/json"})
+			data, err := a.List(ctx, path, 1, 0, opts.Refresh)
 			if err != nil {
-				err = fmt.Errorf("[FsList Error] path: %s, %v", path, err)
+				logrus.Errorf("list %s error: %s", path, err)
 				ch <- iterator.Data[*Content]{Error: err}
 				continue
 			}
-
-			var fsList FsList
-			if err = pandora.MapToStructWithJson(result.Data, &fsList); err != nil {
-				ch <- iterator.Data[*Content]{Error: err}
-				continue
-			}
-
-			if total := fsList.Total; total == 0 {
-				continue
-			}
-
-			for _, content := range fsList.Content {
-				content.Endpoint = a.Endpoint
-				content.Name = strings.Join([]string{path, content.Name}, "/")
+			
+			for _, content := range data { 
 				if recursion && content.IsDir {
 					pending = append(pending, content.Name)
 				} else if filterFunc != nil && filterFunc(content.Name) {
-					ch <- iterator.Data[*Content]{Content: &content}
+					ch <- iterator.Data[*Content]{Content: content}
 				} else if extraFunc != nil && extraFunc(content.Name) {
 					content.Action = 1
-					ch <- iterator.Data[*Content]{Content: &content}
+					ch <- iterator.Data[*Content]{Content: content}
 				}
-
+				
 			}
 		}
 
 	})
 
+}
+
+func (a *Server) List(ctx context.Context, path string, page, pageSize int, refresh bool) (res []*Content, err error) {
+
+	data := fmt.Sprintf(`{"path":"%s","password":"","page":%d,"per_page":%d,"refresh":%t}`, path, page, pageSize, refresh)
+	result, err := a.Json(ctx, "api/fs/list", "POST", data, map[string]any{"Content-Type": "application/json"})
+	if err != nil {
+		err = fmt.Errorf("[FsList Error] path: %s, %v", path, err)
+		return
+	}
+
+	var fsList FsList
+	if err = pandora.MapToStructWithJson(result.Data, &fsList); err != nil {
+		return
+	}
+
+	if total := fsList.Total; total == 0 {
+		return
+	}
+
+	for _, content := range fsList.Content {
+		content.Endpoint = a.Endpoint
+		content.Name = strings.Join([]string{path, content.Name}, "/")
+		res = append(res, &content)
+
+	}
+	return
 }
 
 func (a *Server) FsGet(ctx context.Context, path string) (content FsGet, err error) {
