@@ -14,7 +14,6 @@ func list(c *gin.Context) {
 	c.JSON(http.StatusOK, server.Cfg.Jobs)
 }
 
-
 func create(c *gin.Context) {
 	var item = job.Job{Id: uuid.NewString()}
 	if err := c.ShouldBindJSON(&item); err != nil {
@@ -25,9 +24,16 @@ func create(c *gin.Context) {
 	err := server.Cfg.RegisterJob(&item)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"code": "-1", "msg": err.Error()})
-	} else {
-		c.JSON(http.StatusCreated, gin.H{"code": 0, "msg": "success", "data": item})
+		return
 	}
+
+	// 立即持久化配置
+	if err := server.Cfg.Store(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": "-1", "msg": "Failed to save config: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"code": 0, "msg": "success", "data": item})
 }
 func del(c *gin.Context) {
 	jobId := c.Param("id")
@@ -37,6 +43,13 @@ func del(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"code": -1, "msg": err.Error()})
 			return
 		}
+
+		// 立即持久化配置
+		if err := server.Cfg.Store(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"code": -1, "msg": "Failed to save config: " + err.Error()})
+			return
+		}
+
 		c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "success", "data": thisJob})
 		return
 	}
@@ -84,6 +97,13 @@ func modify(c *gin.Context) {
 			}
 			server.Cfg.Jobs = append(server.Cfg.Jobs, thisJob)
 		}
+
+		// 立即持久化配置
+		if err := server.Cfg.Store(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"code": -1, "msg": "Failed to save config: " + err.Error()})
+			return
+		}
+
 		c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "success", "data": thisJob})
 
 	} else {
@@ -109,7 +129,7 @@ func listItem(c *gin.Context) {
 		alistIdx := thisJob.Alist
 		alist := server.Cfg.Alist[alistIdx]
 
-		data, err := alist.List(c, root , page , pageSize , refresh )
+		data, err := alist.List(c, root, page, pageSize, refresh)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"code": 1, "msg": err.Error(), "data": nil})
 			return

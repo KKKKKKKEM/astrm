@@ -75,6 +75,41 @@ html[data-theme="dark"] {
   --sidebar-indicator: var(--accent-gradient);
 }
 
+/* Log Viewer Container */
+.log-viewer-container {
+  background: var(--code-bg);
+  color: var(--code-fg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 16px;
+  min-height: 400px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid var(--code-border);
+  border-radius: 8px;
+}
+
+.log-viewer-container > div {
+  display: block !important;
+  margin: 0;
+  padding: 4px 0;
+}
+
+.log-line {
+  display: block;
+  margin: 0;
+  padding: 4px 0;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
 /* Page */
 * {
   margin: 0;

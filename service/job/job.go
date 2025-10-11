@@ -34,7 +34,7 @@ func (opt *SaveOpt) FmtSavePath() string {
 	opt.Dest = strings.ReplaceAll(opt.Dest, "/", string(filepath.Separator))
 	targetDir := filepath.Join(append([]string{opt.Dest}, fromDirs[len(fromDirs)-opt.Deep:]...)...)
 
-	return filepath.Join(targetDir, strings.Replace(opt.Name, opt.From, "", -1))	
+	return filepath.Join(targetDir, strings.Replace(opt.Name, opt.From, "", -1))
 }
 
 func (opt *SaveOpt) IsWrite(savePath string, referenceTime time.Time) (state bool) {
@@ -73,17 +73,30 @@ type Job struct {
 	Opts        *Opts   `yaml:"opts" json:"opts"`
 	Handler     Handler `yaml:"-" json:"-"`
 	Concurrency int     `yaml:"concurrency" json:"concurrency"`
+	Status      string  `yaml:"-" json:"status,omitempty"`      // 运行状态: idle, running, success, failed
+	LastRunTime string  `yaml:"-" json:"lastRunTime,omitempty"` // 最后运行时间
+	LastError   string  `yaml:"-" json:"lastError,omitempty"`   // 最后错误信息
 }
 
-func (j Job) Run() {
+func (j *Job) Run() {
+	// 设置为运行中
+	j.Status = "running"
+	j.LastRunTime = time.Now().Format("2006-01-02 15:04:05")
+	j.LastError = ""
+
 	logrus.Printf("[start] job name: %s, job id: %s\n", j.Name, j.Id)
-	err := j.Handler.Handle(&j)
+	err := j.Handler.Handle(j)
 	if err != nil {
+		// 设置为失败
+		j.Status = "failed"
+		j.LastError = err.Error()
 		logrus.Printf("[failed] job name: %s, job id: %s, err: %v\n", j.Name, j.Id, err)
 		return
 	}
-	logrus.Printf("[success] job name: %s, job id: %s\n", j.Name, j.Id)
 
+	// 设置为成功
+	j.Status = "success"
+	logrus.Printf("[success] job name: %s, job id: %s\n", j.Name, j.Id)
 }
 
 func Save(opt SaveOpt) (err error) {

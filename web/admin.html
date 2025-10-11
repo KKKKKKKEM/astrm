@@ -72,6 +72,18 @@
             </svg>
             <span>Emby</span>
           </button>
+          <button id="navLogs" class="menu-item" aria-controls="viewLogs">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path
+                d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6zm2-6h8v2H8v-2zm0-3h8v2H8v-2zm0-3h5v2H8V8z"
+              />
+            </svg>
+            <span>Logs</span>
+          </button>
         </nav>
       </aside>
       <div id="sidebarBackdrop" class="sidebar-backdrop" hidden></div>
@@ -92,8 +104,8 @@
                 <table id="alistTable" class="ui-table">
                   <thead>
                     <tr>
-                      <th>Name</th>
-                      <th>Endpoint</th>
+                      <th>名称</th>
+                      <th>入口</th>
                       <th>Token</th>
                       <th>Action</th>
                     </tr>
@@ -120,14 +132,15 @@
                 <table id="jobTable" class="ui-table">
                   <thead>
                     <tr>
-                      <th>Name</th>
+                      <th>名称</th>
+                      <th>状态</th>
                       <th>Alist</th>
-                      <th>From</th>
-                      <th>Dest</th>
-                      <th>Mode</th>
-                      <th>Opts</th>
-                      <th>Spec</th>
-                      <th>Concurrency</th>
+                      <th>源路径</th>
+                      <th>目标路径</th>
+                      <th>模式</th>
+                      <th>选项</th>
+                      <th>定时规则</th>
+                      <th>并发数</th>
                       <th>Action</th>
                     </tr>
                   </thead>
@@ -276,6 +289,92 @@
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
         </button>
+
+        <!-- Logs View -->
+        <div
+          id="viewLogs"
+          class="ui-view"
+          role="tabpanel"
+          aria-labelledby="navLogs"
+        >
+          <section class="panel">
+            <div class="ui-toolbar">
+              <h2>运行日志</h2>
+              <div style="display: flex; gap: 12px; align-items: center">
+                <button
+                  id="toggleAutoScrollBtn"
+                  class="ui-btn ui-btn-sm ui-btn-ghost"
+                  title="切换自动滚动"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <polyline points="17 1 21 5 17 9"></polyline>
+                    <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                    <polyline points="7 23 3 19 7 15"></polyline>
+                    <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                  </svg>
+                  <span id="autoScrollText">自动滚动: 开</span>
+                </button>
+                <button
+                  id="clearLogsBtn"
+                  class="ui-btn ui-btn-sm ui-btn-ghost"
+                  title="清空显示"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path
+                      d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                    ></path>
+                  </svg>
+                  清空
+                </button>
+                <button
+                  id="refreshLogsBtn"
+                  class="ui-btn ui-btn-sm ui-btn-primary"
+                  title="刷新日志"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path
+                      d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+                    ></path>
+                  </svg>
+                  刷新
+                </button>
+              </div>
+            </div>
+            <div class="panel-body" style="padding: 0">
+              <div id="logViewer" class="log-viewer-container">
+                <div
+                  style="color: var(--muted); text-align: center; padding: 40px"
+                >
+                  正在加载日志...
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
       </main>
     </div>
 

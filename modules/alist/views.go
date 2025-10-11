@@ -22,6 +22,13 @@ func create(c *gin.Context) {
 	}
 	item.Endpoint = strings.TrimSpace(item.Endpoint)
 	server.Cfg.Alist = append(server.Cfg.Alist, &item)
+
+	// 立即持久化配置
+	if err := server.Cfg.Store(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": -1, "msg": "Failed to save config: " + err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "success", "data": item})
 }
 
@@ -35,6 +42,13 @@ func modify(c *gin.Context) {
 				return
 			}
 			a.Endpoint = strings.TrimSpace(a.Endpoint)
+
+			// 立即持久化配置
+			if err := server.Cfg.Store(); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"code": -1, "msg": "Failed to save config: " + err.Error()})
+				return
+			}
+
 			c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "success", "data": a})
 			return
 		}
@@ -49,6 +63,13 @@ func del(c *gin.Context) {
 		if a.Name == alistName {
 			// 删除
 			server.Cfg.Alist = append(server.Cfg.Alist[:i], server.Cfg.Alist[i+1:]...)
+
+			// 立即持久化配置
+			if err := server.Cfg.Store(); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"code": -1, "msg": "Failed to save config: " + err.Error()})
+				return
+			}
+
 			c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "success", "data": a})
 			return
 		}

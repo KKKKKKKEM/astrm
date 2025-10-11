@@ -3,15 +3,16 @@ package server
 import (
 	"astrm/middleware"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/natefinch/lumberjack"
-	"github.com/robfig/cron/v3"
-	"github.com/sirupsen/logrus"
 	"io"
 	"log"
 	"net"
 	"os"
 	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/natefinch/lumberjack"
+	"github.com/robfig/cron/v3"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -84,17 +85,10 @@ func Init(configPath string) {
 	if err = setupCfg(); err != nil {
 		panic("setup job failure, err：" + err.Error())
 	}
-	if Cfg.Persistence != "" {
-		_, err = Cfg.Cron.AddFunc(Cfg.Persistence, func() {
-			err := Cfg.store(configPath)
-			if err != nil {
-				logrus.Errorln("save config failure, err：" + err.Error())
-			}
-		})
-		if err != nil {
-			logrus.Errorln("add persistence job failure, err：" + err.Error())
-		}
-	}
+
+	// 保存配置文件路径，用于后续持久化
+	// 不再使用定时任务，改为每次修改后立即保存
+	Cfg.ConfigPath = configPath
 
 	setupHttpServer()
 

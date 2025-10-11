@@ -43,7 +43,7 @@ type AlistStrm struct {
 
 type Storage struct {
 	Debug       bool            `yaml:"debug"`
-	Persistence string          `yaml:"persistence"`
+	Persistence string          `yaml:"persistence"` // 保留用于向后兼容，但不再使用
 	Alist       []*alist.Server `yaml:"alist"`
 	Jobs        []*job.Job      `yaml:"jobs"`
 	Listen      string          `yaml:"listen"`
@@ -53,7 +53,8 @@ type Storage struct {
 		Level int    `yaml:"level"`
 		Path  string `yaml:"path"`
 	} `yaml:"log"`
-	Entrance string `yaml:"entrance"`
+	Entrance   string `yaml:"entrance"`
+	ConfigPath string `yaml:"-"` // 配置文件路径，不保存到 YAML
 }
 
 func (s *Storage) fromYaml(path string) (err error) {
@@ -72,6 +73,9 @@ func (s *Storage) store(path string) (err error) {
 	// 将 s 写入yaml 文件
 	var bytes []byte
 	bytes, err = yaml.Marshal(s)
+	if err != nil {
+		return err
+	}
 
 	// 写入文件
 	err = os.WriteFile(path, bytes, 0644)
@@ -80,7 +84,7 @@ func (s *Storage) store(path string) (err error) {
 
 // Store 保存配置到持久化文件
 func (s *Storage) Store() error {
-	return s.store(s.Persistence)
+	return s.store(s.ConfigPath)
 }
 
 func (s *Storage) RegisterJob(j *job.Job) (err error) {

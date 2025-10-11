@@ -5,14 +5,15 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
-	"github.com/andybalholm/brotli"
-	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/andybalholm/brotli"
+	"github.com/sirupsen/logrus"
 )
 
 const (

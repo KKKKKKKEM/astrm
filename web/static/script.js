@@ -31,32 +31,67 @@ document.addEventListener("DOMContentLoaded", () => {
     const navAlist = document.getElementById("navAlist");
     const navJobs = document.getElementById("navJobs");
     const navEmby = document.getElementById("navEmby");
+    const navLogs = document.getElementById("navLogs");
     const viewAlist = document.getElementById("viewAlist");
     const viewJobs = document.getElementById("viewJobs");
     const viewEmby = document.getElementById("viewEmby");
+    const viewLogs = document.getElementById("viewLogs");
 
     function activate(which) {
       const isAlist = which === "alist";
       const isJobs = which === "jobs";
       const isEmby = which === "emby";
+      const isLogs = which === "logs";
 
-      if (navAlist && navJobs && navEmby) {
+      if (navAlist && navJobs && navEmby && navLogs) {
         navAlist.classList.toggle("active", isAlist);
         navJobs.classList.toggle("active", isJobs);
         navEmby.classList.toggle("active", isEmby);
+        navLogs.classList.toggle("active", isLogs);
         navAlist.setAttribute("aria-selected", String(isAlist));
         navJobs.setAttribute("aria-selected", String(isJobs));
         navEmby.setAttribute("aria-selected", String(isEmby));
+        navLogs.setAttribute("aria-selected", String(isLogs));
       }
       viewAlist.classList.toggle("active", isAlist);
       viewJobs.classList.toggle("active", isJobs);
       viewEmby.classList.toggle("active", isEmby);
+      if (viewLogs) viewLogs.classList.toggle("active", isLogs);
 
       // Toggle floating add buttons visibility
       const addAlistBtn = document.getElementById("addAlistBtn");
       const addJobBtn = document.getElementById("addJobBtn");
       if (addAlistBtn) addAlistBtn.style.display = isAlist ? "flex" : "none";
       if (addJobBtn) addJobBtn.style.display = isJobs ? "flex" : "none";
+
+      // Start job status polling when jobs tab is activated
+      if (isJobs) {
+        if (window.jobMgr) {
+          window.jobMgr.startStatusPolling();
+        }
+      } else {
+        // Stop job status polling when leaving jobs tab
+        if (window.jobMgr) {
+          window.jobMgr.stopStatusPolling();
+        }
+      }
+
+      // Start log streaming when logs tab is activated
+      if (isLogs) {
+        setTimeout(() => {
+          if (
+            window.logViewer &&
+            typeof window.logViewer.start === "function"
+          ) {
+            window.logViewer.start();
+          }
+        }, 100);
+      } else {
+        // Stop log streaming when leaving logs tab
+        if (window.logViewer && typeof window.logViewer.stop === "function") {
+          window.logViewer.stop();
+        }
+      }
 
       try {
         localStorage.setItem("astrm_active_tab", which);
@@ -68,10 +103,11 @@ document.addEventListener("DOMContentLoaded", () => {
         if (bd) bd.hidden = true;
       }
     }
-    if (navAlist && navJobs && navEmby) {
+    if (navAlist && navJobs && navEmby && navLogs) {
       navAlist.addEventListener("click", () => activate("alist"));
       navJobs.addEventListener("click", () => activate("jobs"));
       navEmby.addEventListener("click", () => activate("emby"));
+      navLogs.addEventListener("click", () => activate("logs"));
     }
     let initial = "alist";
     try {
@@ -434,6 +470,68 @@ document.addEventListener("DOMContentLoaded", () => {
             "'": "&#39;",
           }[m])
       );
+
+    // Special rendering for status field
+    if (type === "status") {
+      const status = value || "idle";
+      const statusBadge = document.createElement("span");
+      statusBadge.className = "status-badge";
+      statusBadge.style.cssText = `
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+      `;
+
+      // Status colors and icons
+      const statusConfig = {
+        idle: {
+          color: "var(--muted)",
+          bg: "rgba(100, 116, 139, 0.1)",
+          icon: "⚪",
+          text: "空闲",
+        },
+        running: {
+          color: "#3b82f6",
+          bg: "rgba(59, 130, 246, 0.1)",
+          icon: "🔄",
+          text: "运行中",
+        },
+        success: {
+          color: "var(--success)",
+          bg: "rgba(16, 185, 129, 0.1)",
+          icon: "✓",
+          text: "成功",
+        },
+        failed: {
+          color: "var(--danger)",
+          bg: "rgba(239, 68, 68, 0.1)",
+          icon: "✗",
+          text: "失败",
+        },
+      };
+
+      const config = statusConfig[status] || statusConfig.idle;
+      statusBadge.style.color = config.color;
+      statusBadge.style.background = config.bg;
+      statusBadge.innerHTML = `${config.icon} ${config.text}`;
+
+      // Add tooltip for last run time and error
+      if (item.lastRunTime) {
+        statusBadge.title = `最后运行: ${item.lastRunTime}`;
+        if (item.lastError) {
+          statusBadge.title += `\n错误: ${item.lastError}`;
+        }
+      }
+
+      span.appendChild(statusBadge);
+      cell.appendChild(span);
+      return cell; // Status is not editable, return early
+    }
+
     if (["from", "dest", "opts", "spec"].includes(key)) {
       const t = String(displayRaw).trim();
       if (t)
@@ -841,12 +939,42 @@ document.addEventListener("DOMContentLoaded", () => {
   class ResourceManager {
     constructor(cfg) {
       this.cfg = cfg;
+      this.statusPollingInterval = null;
     }
 
     async load() {
       this.showSkeleton();
       const list = await api.get(this.cfg.endpoint).catch(() => []);
       this.render(list || []);
+    }
+
+    // Start polling job status (only for jobs)
+    startStatusPolling() {
+      if (this.cfg.resource !== "job") return;
+      if (this.statusPollingInterval) return; // Already polling
+
+      // Poll every 3 seconds
+      this.statusPollingInterval = setInterval(async () => {
+        try {
+          const list = await api.get(this.cfg.endpoint);
+          // Check if any job is running
+          const hasRunningJobs = list.some((job) => job.status === "running");
+          if (hasRunningJobs) {
+            // Only update if there are running jobs
+            this.render(list || []);
+          }
+        } catch (error) {
+          console.error("Failed to poll job status:", error);
+        }
+      }, 3000);
+    }
+
+    // Stop polling job status
+    stopStatusPolling() {
+      if (this.statusPollingInterval) {
+        clearInterval(this.statusPollingInterval);
+        this.statusPollingInterval = null;
+      }
     }
 
     render(items) {
@@ -1038,6 +1166,67 @@ document.addEventListener("DOMContentLoaded", () => {
               "'": "&#39;",
             }[m])
         );
+
+      // Special rendering for status field
+      if (type === "status") {
+        const status = value || "idle";
+        const statusBadge = document.createElement("span");
+        statusBadge.className = "status-badge";
+        statusBadge.style.cssText = `
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 12px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: 600;
+        `;
+
+        // Status colors and icons
+        const statusConfig = {
+          idle: {
+            color: "var(--muted)",
+            bg: "rgba(100, 116, 139, 0.1)",
+            icon: "⚪",
+            text: "空闲",
+          },
+          running: {
+            color: "#3b82f6",
+            bg: "rgba(59, 130, 246, 0.1)",
+            icon: "🔄",
+            text: "运行中",
+          },
+          success: {
+            color: "var(--success)",
+            bg: "rgba(16, 185, 129, 0.1)",
+            icon: "✓",
+            text: "成功",
+          },
+          failed: {
+            color: "var(--danger)",
+            bg: "rgba(239, 68, 68, 0.1)",
+            icon: "✗",
+            text: "失败",
+          },
+        };
+
+        const config = statusConfig[status] || statusConfig.idle;
+        statusBadge.style.color = config.color;
+        statusBadge.style.background = config.bg;
+        statusBadge.innerHTML = `${config.icon} ${config.text}`;
+
+        // Add tooltip for last run time and error
+        if (item.lastRunTime) {
+          statusBadge.title = `最后运行: ${item.lastRunTime}`;
+          if (item.lastError) {
+            statusBadge.title += `\n错误: ${item.lastError}`;
+          }
+        }
+
+        span.appendChild(statusBadge);
+        span.style.cursor = "default"; // Status is not editable
+        return span;
+      }
 
       if (["from", "dest", "opts", "spec"].includes(key)) {
         const t = String(displayRaw).trim();
@@ -1703,6 +1892,7 @@ document.addEventListener("DOMContentLoaded", () => {
     idKey: "id",
     columns: [
       { key: "name", type: "text", label: "名称" },
+      { key: "status", type: "status", label: "状态" },
       { key: "alist", type: "int", label: "Alist" },
       { key: "from", type: "text", label: "源路径" },
       { key: "dest", type: "text", label: "目标路径" },
@@ -1734,7 +1924,37 @@ document.addEventListener("DOMContentLoaded", () => {
           buttonText,
           buttonClass,
           async () => {
-            await api.post(`/api/job/${item.id}`, {});
+            try {
+              // 立即更新状态为运行中
+              item.status = "running";
+              item.lastRunTime = new Date().toLocaleString("zh-CN", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: false,
+              });
+              item.lastError = "";
+
+              // 刷新 UI
+              await jobMgr.load();
+
+              // 调用运行 API
+              await api.post(`/api/job/${item.id}`, {});
+
+              // 等待一小段时间后刷新状态
+              setTimeout(async () => {
+                await jobMgr.load();
+              }, 1000);
+
+              showToast("✓ 任务已启动", "success");
+            } catch (error) {
+              showToast("✗ 启动失败", "error");
+              // 刷新以获取最新状态
+              await jobMgr.load();
+            }
           },
           { title: "Run", icon: icons.play }
         )
@@ -2713,6 +2933,182 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("liveToast").classList.remove("show");
     }
   });
+
+  // ==================== Log Viewer ====================
+  class LogViewer {
+    constructor() {
+      this.autoScroll = true;
+      this.eventSource = null;
+      this.isStreaming = false;
+      this.initialized = false;
+      this.container = null;
+    }
+
+    init() {
+      if (this.initialized) return;
+
+      // 尝试获取容器
+      this.container = document.getElementById("logViewer");
+      if (!this.container) {
+        console.warn("日志容器未找到，稍后重试");
+        return;
+      }
+
+      // Bind buttons
+      const toggleBtn = document.getElementById("toggleAutoScrollBtn");
+      const clearBtn = document.getElementById("clearLogsBtn");
+      const refreshBtn = document.getElementById("refreshLogsBtn");
+
+      if (toggleBtn) {
+        toggleBtn.addEventListener("click", () => this.toggleAutoScroll());
+      }
+      if (clearBtn) {
+        clearBtn.addEventListener("click", () => this.clear());
+      }
+      if (refreshBtn) {
+        refreshBtn.addEventListener("click", () => this.refresh());
+      }
+
+      this.initialized = true;
+      console.log("日志查看器初始化完成");
+    }
+
+    start() {
+      // 尝试初始化（如果还没初始化）
+      this.init();
+
+      // 如果初始化失败，再次尝试获取容器
+      if (!this.container) {
+        this.container = document.getElementById("logViewer");
+      }
+
+      if (!this.container) {
+        console.error("日志容器未找到，无法启动日志流");
+        return;
+      }
+
+      if (this.isStreaming) {
+        console.log("日志流已在运行中");
+        return;
+      }
+
+      this.isStreaming = true;
+      this.clear();
+      this.container.innerHTML =
+        '<div style="color: #94a3b8; text-align: center; padding: 40px;">正在连接日志流...</div>';
+
+      console.log("正在连接日志流...");
+
+      // 使用 EventSource 进行 SSE 连接
+      try {
+        this.eventSource = new EventSource(
+          "/api/logs/tail?follow=true&lines=100"
+        );
+
+        this.eventSource.onmessage = (event) => {
+          // console.log("收到日志消息:", event.data);
+          this.appendLog(event.data);
+        };
+
+        this.eventSource.onerror = (error) => {
+          console.error("日志流错误:", error);
+          if (this.eventSource) {
+            this.eventSource.close();
+          }
+          this.isStreaming = false;
+          if (this.container) {
+            this.container.innerHTML +=
+              '\n<div style="color: var(--danger); padding: 10px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; margin-top: 10px;">连接断开，请点击刷新重新连接</div>';
+          }
+        };
+
+        this.eventSource.onopen = () => {
+          console.log("日志流连接成功");
+        };
+      } catch (error) {
+        console.error("创建 EventSource 失败:", error);
+        this.isStreaming = false;
+        if (this.container) {
+          this.container.innerHTML =
+            '<div style="color: var(--danger); text-align: center; padding: 40px;">连接失败，请刷新重试</div>';
+        }
+      }
+    }
+
+    stop() {
+      if (this.eventSource) {
+        this.eventSource.close();
+        this.eventSource = null;
+      }
+      this.isStreaming = false;
+    }
+
+    appendLog(line) {
+      if (!line || !this.container) {
+        return;
+      }
+
+      // 如果是第一条日志，清空加载提示
+      if (
+        this.container.innerHTML.includes("正在连接") ||
+        this.container.innerHTML.includes("正在加载")
+      ) {
+        this.container.innerHTML = "";
+      }
+
+      // 创建日志行
+      const logLine = document.createElement("div");
+      logLine.className = "log-line";
+
+      // 简单的日志高亮 - 使用明确的颜色值
+      if (line.includes("ERROR") || line.includes("error")) {
+        logLine.style.color = "#ef4444"; // 红色
+      } else if (line.includes("WARN") || line.includes("warn")) {
+        logLine.style.color = "#f59e0b"; // 橙色
+      } else if (line.includes("INFO") || line.includes("info")) {
+        logLine.style.color = "#94a3b8"; // 灰色
+      } else if (line.includes("DEBUG") || line.includes("debug")) {
+        logLine.style.color = "#94a3b8"; // 灰色
+      } else {
+        // 默认颜色 - 灰色
+        logLine.style.color = "#94a3b8";
+      }
+
+      logLine.textContent = line;
+      this.container.appendChild(logLine);
+
+      // 自动滚动
+      if (this.autoScroll && this.container) {
+        this.container.scrollTop = this.container.scrollHeight;
+      }
+    }
+
+    toggleAutoScroll() {
+      this.autoScroll = !this.autoScroll;
+      const text = document.getElementById("autoScrollText");
+      if (text) {
+        text.textContent = `自动滚动: ${this.autoScroll ? "开" : "关"}`;
+      }
+
+      if (this.autoScroll && this.container) {
+        this.container.scrollTop = this.container.scrollHeight;
+      }
+    }
+
+    clear() {
+      if (this.container) {
+        this.container.innerHTML = "";
+      }
+    }
+
+    async refresh() {
+      this.stop();
+      setTimeout(() => this.start(), 100);
+    }
+  }
+
+  // 初始化日志查看器
+  window.logViewer = new LogViewer();
 
   // Initial load
   Promise.all([alistMgr.load(), jobMgr.load()]).catch(console.error);

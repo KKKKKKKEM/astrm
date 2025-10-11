@@ -1,52 +1,408 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>403 - 禁止访问</title>
-    <link href="static/bootstrap.min.css" rel="stylesheet">
-    <link href="static/style.css" rel="stylesheet">
+    <link href="static/style.css" rel="stylesheet" />
     <style>
-        .center-wrap {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: var(--bg-gradient);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+
+      .error-container {
+        max-width: 480px;
+        width: 100%;
+        text-align: center;
+      }
+
+      /* 锁图标容器 */
+      .lock-icon {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 32px;
+        position: relative;
+        animation: fadeInScale 0.6s ease-out;
+      }
+
+      .lock-icon svg {
+        width: 100%;
+        height: 100%;
+        filter: drop-shadow(0 8px 24px rgba(99, 102, 241, 0.3));
+      }
+
+      /* 403 数字样式 */
+      .error-code {
+        font-size: 120px;
+        font-weight: 800;
+        line-height: 1;
+        background: var(--accent-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 24px;
+        letter-spacing: -4px;
+        animation: fadeInScale 0.6s ease-out;
+      }
+
+      /* 标题 */
+      .error-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 12px;
+        animation: fadeIn 0.8s ease-out 0.2s both;
+      }
+
+      /* 描述文字 */
+      .error-description {
+        font-size: 16px;
+        color: var(--muted);
+        margin-bottom: 32px;
+        line-height: 1.6;
+        animation: fadeIn 0.8s ease-out 0.3s both;
+      }
+
+      /* 提示卡片 */
+      .info-card {
+        background: var(--panel);
+        border: 2px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 16px 20px;
+        margin-bottom: 32px;
+        animation: fadeIn 0.8s ease-out 0.35s both;
+      }
+
+      .info-card-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .info-card-text {
+        font-size: 13px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      /* 输入框容器 */
+      .entry-form {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 24px;
+        animation: fadeIn 0.8s ease-out 0.4s both;
+      }
+
+      /* 输入框 */
+      .entry-input {
+        flex: 1;
+        padding: 14px 18px;
+        border: 2px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--panel);
+        color: var(--text);
+        font-size: 15px;
+        outline: none;
+        transition: all 0.2s ease;
+      }
+
+      .entry-input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+      }
+
+      .entry-input::placeholder {
+        color: var(--muted);
+      }
+
+      /* 确认按钮 */
+      .entry-button {
+        padding: 14px 28px;
+        background: var(--accent-gradient);
+        color: rgb(4, 1, 1);
+        /* border: none; */
+        border-radius: var(--radius-sm);
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+      }
+
+      .entry-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+      }
+
+      .entry-button:active {
+        transform: translateY(0);
+      }
+
+      /* 返回链接 */
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 14px;
+        padding: 8px 16px;
+        border-radius: var(--radius-sm);
+        transition: all 0.2s ease;
+        animation: fadeIn 0.8s ease-out 0.5s both;
+      }
+
+      .back-link:hover {
+        color: var(--accent);
+        background: rgba(99, 102, 241, 0.05);
+      }
+
+      .back-link svg {
+        transition: transform 0.2s ease;
+      }
+
+      .back-link:hover svg {
+        transform: translateX(-2px);
+      }
+
+      /* 动画 */
+      @keyframes fadeInScale {
+        from {
+          opacity: 0;
+          transform: scale(0.8);
         }
-        .error-card { max-width: 560px; width: 100%; }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* 响应式 */
+      @media (max-width: 768px) {
+        .error-code {
+          font-size: 80px;
+          letter-spacing: -2px;
+        }
+
+        .error-title {
+          font-size: 24px;
+        }
+
+        .error-description {
+          font-size: 14px;
+        }
+
+        .entry-form {
+          flex-direction: column;
+        }
+
+        .entry-button {
+          width: 100%;
+        }
+      }
     </style>
-    </head>
-<body>
-<div class="center-wrap">
-    <div class="panel error-card">
-        <div class="panel-body text-center">
-            <div style="font-size: 64px; line-height: 1; color: #ef4444;">403</div>
-            <h1 class="h4 mt-2 mb-1">禁止访问</h1>
-            <div class="subtle mb-3">对不起，您无权访问此页面</div>
-            <div class="d-flex gap-2 justify-content-center align-items-center" style="gap: 8px;">
-                <input type="text" id="entryString" class="form-control" placeholder="请输入您的入口" style="max-width: 260px;">
-                <button class="btn btn-primary" onclick="redirectToEntry()">确认</button>
-            </div>
-            <div class="mt-3">
-                <a href="javascript:history.back()" class="link-secondary">返回上一页</a>
-            </div>
+  </head>
+  <body>
+    <div class="error-container">
+      <!-- 锁图标 -->
+      <div class="lock-icon">
+        <svg
+          viewBox="0 0 120 120"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <!-- 锁身 -->
+          <rect
+            x="30"
+            y="55"
+            width="60"
+            height="50"
+            rx="8"
+            fill="url(#lockGradient)"
+            stroke="url(#lockStroke)"
+            stroke-width="3"
+          />
+          <!-- 锁孔 -->
+          <circle cx="60" cy="75" r="6" fill="white" opacity="0.9" />
+          <rect
+            x="57"
+            y="75"
+            width="6"
+            height="12"
+            rx="3"
+            fill="white"
+            opacity="0.9"
+          />
+          <!-- 锁扣 -->
+          <path
+            d="M 40 55 L 40 40 Q 40 25 60 25 Q 80 25 80 40 L 80 55"
+            stroke="url(#lockStroke)"
+            stroke-width="8"
+            stroke-linecap="round"
+            fill="none"
+          />
+          <!-- 渐变定义 -->
+          <defs>
+            <linearGradient
+              id="lockGradient"
+              x1="0%"
+              y1="0%"
+              x2="100%"
+              y2="100%"
+            >
+              <stop offset="0%" style="stop-color: #6366f1; stop-opacity: 1" />
+              <stop
+                offset="100%"
+                style="stop-color: #8b5cf6; stop-opacity: 1"
+              />
+            </linearGradient>
+            <linearGradient id="lockStroke" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color: #6366f1; stop-opacity: 1" />
+              <stop
+                offset="100%"
+                style="stop-color: #8b5cf6; stop-opacity: 1"
+              />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+
+      <!-- 403 错误码 -->
+      <div class="error-code">403</div>
+
+      <!-- 标题 -->
+      <h1 class="error-title">禁止访问</h1>
+
+      <!-- 描述 -->
+      <p class="error-description">
+        对不起，您无权访问此页面<br />
+        请输入正确的入口以继续访问
+      </p>
+
+      <!-- 提示卡片 -->
+      <div class="info-card">
+        <div class="info-card-title">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle
+              cx="8"
+              cy="8"
+              r="7"
+              stroke="currentColor"
+              stroke-width="1.5"
+            />
+            <path
+              d="M8 4V8M8 11H8.01"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+          </svg>
+          访问提示
         </div>
-    </div>
+        <div class="info-card-text">
+          此页面需要特定的访问入口才能进入。请输入正确的入口秘钥。
+        </div>
+      </div>
+
+      <!-- 入口输入表单 -->
+      <div class="entry-form">
+        <input
+          type="text"
+          id="entryString"
+          class="entry-input"
+          placeholder="请输入您的入口"
+          onkeypress="if(event.key==='Enter') redirectToEntry()"
+        />
+        <button class="entry-button" onclick="redirectToEntry()">确认</button>
+      </div>
+
+      <!-- 返回链接 -->
+      <a href="javascript:history.back()" class="back-link">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M10 12L6 8L10 4"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+        返回上一页
+      </a>
     </div>
 
-<script>
-function redirectToEntry() {
-  var entry = document.getElementById('entryString').value.trim();
-  if (entry) {
-    var currentUrl = window.location.pathname;
-    if (!currentUrl.endsWith('/')) currentUrl += '/';
-    window.location.href = currentUrl + encodeURIComponent(entry);
-  } else {
-    alert('请输入有效的入口');
-  }
-}
-</script>
+    <script>
+      function redirectToEntry() {
+        var entry = document.getElementById("entryString").value.trim();
+        if (entry) {
+          var currentUrl = window.location.pathname;
+          if (!currentUrl.endsWith("/")) currentUrl += "/";
+          window.location.href = currentUrl + encodeURIComponent(entry);
+        } else {
+          // 添加抖动动画提示
+          var input = document.getElementById("entryString");
+          input.style.animation = "shake 0.5s";
+          setTimeout(() => {
+            input.style.animation = "";
+          }, 500);
+        }
+      }
 
-</body>
+      // 添加抖动动画
+      var style = document.createElement("style");
+      style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+                20%, 40%, 60%, 80% { transform: translateX(8px); }
+            }
+        `;
+      document.head.appendChild(style);
+
+      // 自动聚焦输入框
+      document.getElementById("entryString").focus();
+    </script>
+  </body>
 </html>

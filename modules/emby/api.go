@@ -1,4 +1,4 @@
-package config
+package emby
 
 import (
 	"astrm/server"

@@ -3,10 +3,11 @@ package admin
 import (
 	"astrm/server"
 	"astrm/web"
-	"github.com/gin-gonic/gin"
-	"gopkg.in/yaml.v3"
 	"io/fs"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"gopkg.in/yaml.v3"
 )
 
 func admin(c *gin.Context) {

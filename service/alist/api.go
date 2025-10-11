@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -84,15 +85,40 @@ func (r *Result) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
+// rateLimiter 用于控制请求间隔
+type rateLimiter struct {
+	mu          sync.Mutex
+	lastRequest time.Time
+	interval    time.Duration
+}
+
+func (rl *rateLimiter) Wait() {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+	elapsed := now.Sub(rl.lastRequest)
+
+	if elapsed < rl.interval {
+		waitTime := rl.interval - elapsed
+		fmt.Printf("[rate limit] 等待 %v 后发送请求\n", waitTime)
+		time.Sleep(waitTime)
+	}
+
+	rl.lastRequest = time.Now()
+}
+
 func (a *Server) Handle(j *job.Job) (err error) {
 	var pool *concurrent.Pool
 	ctx := context.TODO()
 
+	// 创建限流器
 	if j.Opts.Interval != 0 {
-		ticker := time.NewTicker(time.Duration(j.Opts.Interval) * time.Second)
-		ctx = context.WithValue(ctx, "i-lock", ticker.C)
+		limiter := &rateLimiter{
+			interval: time.Duration(j.Opts.Interval) * time.Second,
+		}
+		ctx = context.WithValue(ctx, "rate-limiter", limiter)
 		ctx = context.WithValue(ctx, "interval", j.Opts.Interval)
-		defer ticker.Stop()
 	}
 
 	process := func(content *Content, o *job.SaveOpt) {
@@ -250,10 +276,11 @@ func (a *Server) Stream(ctx context.Context, uri, method, data string, headers m
 	}
 	req.Header.Add("Authorization", a.Token)
 
-	//并发控制
+	// 请求间隔控制
+	// 使用限流器确保请求之间有足够的间隔
 	if ctx.Value("interval") != nil {
-		fmt.Printf("[wait] %v s, data: %s\n", ctx.Value("interval"), data)
-		<-ctx.Value("i-lock").(<-chan time.Time)
+		limiter := ctx.Value("rate-limiter").(*rateLimiter)
+		limiter.Wait()
 	}
 
 	res, err = client.Do(req)
@@ -281,8 +308,8 @@ func (a *Server) FsList(ctx context.Context, path string, recursion bool, opts *
 				ch <- iterator.Data[*Content]{Error: err}
 				continue
 			}
-			
-			for _, content := range data { 
+
+			for _, content := range data {
 				if recursion && content.IsDir {
 					pending = append(pending, content.Name)
 				} else if filterFunc != nil && filterFunc(content.Name) {
@@ -291,7 +318,7 @@ func (a *Server) FsList(ctx context.Context, path string, recursion bool, opts *
 					content.Action = 1
 					ch <- iterator.Data[*Content]{Content: content}
 				}
-				
+
 			}
 		}
 
