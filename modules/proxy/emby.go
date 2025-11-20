@@ -4,10 +4,10 @@ import (
 	"astrm/server"
 	"astrm/service/emby"
 	"astrm/utils"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"net/http/httputil"
@@ -15,9 +15,10 @@ import (
 	"path"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
-	"bytes"
-    "strconv"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/gin-gonic/gin"
 )
