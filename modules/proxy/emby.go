@@ -118,7 +118,7 @@ func (embyServerHandler *EmbyServerHandler) ModifyPlaybackInfo(rw *http.Response
 
 		}
 	}(rw.Body)
-	body, err := utils.ReadBody(rw)
+	body, err := io.ReadAll(rw.Body)
 	if err != nil {
 		logrus.Errorln("读取 Body 出错：", err)
 		return err
