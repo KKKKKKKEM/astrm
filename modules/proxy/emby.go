@@ -198,8 +198,10 @@ func (embyServerHandler *EmbyServerHandler) ModifyPlaybackInfo(rw *http.Response
 		return err
 	}
 
-	rw.Header.Set("Content-Type", "application/json") // 更新 Content-Type 头
-	return utils.UpdateBody(rw, body)
+	rw.Header.Set("Content-Type", "application/json")        // 更新 Content-Type 头
+	rw.Header.Set("Content-Length", strconv.Itoa(len(body))) // 更新 Content-Length 头
+	rw.Body = io.NopCloser(bytes.NewReader(body))
+	return nil
 }
 
 // 视频流处理器
@@ -310,9 +312,10 @@ func (embyServerHandler *EmbyServerHandler) ModifyBaseHtmlPlayer(rw *http.Respon
 	if err != nil {
 		return err
 	}
-
-	modifiedBodyStr := strings.ReplaceAll(string(body), `mediaSource.IsRemote&&"DirectPlay"===playMethod?null:"anonymous"`, "null") // 修改响应体
-	return utils.UpdateBody(rw, []byte(modifiedBodyStr))
+	body = bytes.ReplaceAll(body, []byte(`mediaSource.IsRemote&&"DirectPlay"===playMethod?null:"anonymous"`), []byte("null")) // 修改响应体
+	rw.Header.Set("Content-Length", strconv.Itoa(len(body)))
+	rw.Body = io.NopCloser(bytes.NewReader(body))
+	return nil
 
 }
 
