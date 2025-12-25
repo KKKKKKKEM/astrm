@@ -1,545 +1,1954 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Astrm Admin</title>
-    <link rel="stylesheet" href="static/style.css" />
-    <meta name="color-scheme" content="light" />
-    <meta name="description" content="Astrm Admin UI" />
-    <meta name="format-detection" content="telephone=no" />
+    <link rel="stylesheet" href="static/style_editorial.css?v=16" />
+    <meta name="description" content="Astrm Admin - Modern Editorial Layout" />
+
+    <!-- Google Fonts: Chinese Serif + Sans Serif -->
+    <!-- <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      rel="icon"
-      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🧭</text></svg>"
-    />
-    <style>
-      .navbar-brand {
-        font-weight: 600;
-      }
-    </style>
-    <!--[if IE]>
-      <script>
-        alert("Your browser is not supported. Please upgrade.");
-      </script>
-    <![endif]-->
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    /> -->
+
+    <!-- React and ReactDOM from CDN -->
+    <script crossorigin src="static/react.production.min.js"></script>
+    <script crossorigin src="static/react-dom.production.min.js"></script>
+
+    <!-- Babel Standalone for JSX transformation -->
+    <script src="static/babel.min.js"></script>
   </head>
   <body>
-    <nav class="ui-navbar">
-      <button id="sidebarToggle" class="brand-logo" aria-label="Toggle Menu">
-        <span class="logo-text">Astrm</span>
-      </button>
-    </nav>
+    <div id="root"></div>
 
-    <div class="layout" id="appLayout">
-      <aside id="sidebar" class="sidebar" aria-label="Sidebar">
-        <div class="sidebar-header">Manage</div>
-        <nav class="menu">
-          <button
-            id="navAlist"
-            class="menu-item active"
-            aria-controls="viewAlist"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z" />
-            </svg>
-            <span>Alists</span>
-          </button>
-          <button id="navJobs" class="menu-item" aria-controls="viewJobs">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path
-                d="M12 8v5l4 2-.5.87-4.5-2.37V8h1zM6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 2v12h12V6H6z"
-              />
-            </svg>
-            <span>Jobs</span>
-          </button>
-          <button id="navEmby" class="menu-item" aria-controls="viewEmby">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path
-                d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"
-              />
-            </svg>
-            <span>Emby</span>
-          </button>
-          <button id="navLogs" class="menu-item" aria-controls="viewLogs">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path
-                d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6zm2-6h8v2H8v-2zm0-3h8v2H8v-2zm0-3h5v2H8V8z"
-              />
-            </svg>
-            <span>Logs</span>
-          </button>
-        </nav>
-      </aside>
-      <div id="sidebarBackdrop" class="sidebar-backdrop" hidden></div>
+    <script type="text/babel" data-type="module" data-presets="react">
+      const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
-      <main class="content">
-        <div
-          id="viewAlist"
-          class="ui-view active"
-          role="tabpanel"
-          aria-labelledby="navAlist"
-        >
-          <section class="panel">
-            <div class="ui-toolbar">
-              <h2>Alists</h2>
-            </div>
-            <div class="panel-body">
-              <div class="table-wrap">
-                <table id="alistTable" class="ui-table">
-                  <thead>
-                    <tr>
-                      <th>名称</th>
-                      <th>入口</th>
-                      <th>Token</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody></tbody>
-                </table>
-              </div>
-            </div>
-          </section>
-        </div>
+      // ==================== API Utilities ====================
+      const api = {
+        async get(url, params = {}) {
+          let fullUrl = url;
+          if (Object.keys(params).length > 0) {
+            const queryString = new URLSearchParams(params).toString();
+            fullUrl = `${url}?${queryString}`;
+          }
+          const res = await fetch(fullUrl);
+          return res.json();
+        },
+        async post(url, body) {
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const out = await res.json();
+          if (!res.ok) throw new Error(out.message || "Request failed");
+          return out;
+        },
+        async put(url, body) {
+          const res = await fetch(url, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const out = await res.json();
+          if (!res.ok) throw new Error(out.message || "Request failed");
+          return out;
+        },
+        async delete(url) {
+          const res = await fetch(url, { method: "DELETE" });
+          const out = await res.json();
+          if (!res.ok) throw new Error(out.message || "Request failed");
+          return out;
+        },
+      };
 
-        <div
-          id="viewJobs"
-          class="ui-view"
-          role="tabpanel"
-          aria-labelledby="navJobs"
-        >
-          <section class="panel">
-            <div class="ui-toolbar">
-              <h2>Jobs</h2>
-            </div>
-            <div class="panel-body">
-              <div class="table-wrap">
-                <table id="jobTable" class="ui-table">
-                  <thead>
-                    <tr>
-                      <th>名称</th>
-                      <th>状态</th>
-                      <th>Alist</th>
-                      <th>源路径</th>
-                      <th>目标路径</th>
-                      <th>模式</th>
-                      <th>选项</th>
-                      <th>定时规则</th>
-                      <th>并发数</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody></tbody>
-                </table>
-              </div>
-            </div>
-          </section>
-        </div>
+      // ==================== Toast Component ====================
+      function Toast({ message, type, onClose }) {
+        useEffect(() => {
+          const duration =
+            type === "success" ? 800 : type === "error" ? 2000 : 1200;
+          const timer = setTimeout(onClose, duration);
+          return () => clearTimeout(timer);
+        }, [type, onClose]);
 
-        <div
-          id="viewEmby"
-          class="ui-view"
-          role="tabpanel"
-          aria-labelledby="navEmby"
-        >
-          <section class="panel">
-            <div class="ui-toolbar">
-              <h2>Emby 配置</h2>
-            </div>
-            <div class="panel-body">
-              <div class="emby-config-section">
-                <h3>基本配置</h3>
-                <div class="config-form">
-                  <div class="form-group">
-                    <label>服务器地址</label>
-                    <input
-                      type="text"
-                      id="embyAddr"
-                      class="form-control"
-                      placeholder="http://localhost:8096"
-                    />
-                  </div>
-                  <div class="form-group">
-                    <label>API Key</label>
-                    <input
-                      type="text"
-                      id="embyApiKey"
-                      class="form-control"
-                      placeholder="Your Emby API Key"
-                    />
-                  </div>
-                  <button id="saveEmbyConfig" class="ui-btn ui-btn-primary">
-                    保存配置
-                  </button>
-                </div>
-              </div>
+        return (
+          <div className={`ui-toast show toast-${type}`}>
+            <div className="toast-body">{message}</div>
+            <button className="ui-close" onClick={onClose} aria-label="Close">
+              ✕
+            </button>
+          </div>
+        );
+      }
 
-              <div class="emby-config-section">
-                <div class="section-header">
-                  <h3>HTTP Strm 规则</h3>
-                  <button
-                    id="addHttpStrmBtn"
-                    class="ui-btn ui-btn-sm ui-btn-primary"
-                  >
-                    添加规则
-                  </button>
-                </div>
-                <div class="table-wrap">
-                  <table id="httpStrmTable" class="ui-table">
-                    <thead>
-                      <tr>
-                        <th>启用</th>
-                        <th>匹配规则</th>
-                        <th>操作</th>
-                        <th>转码</th>
-                        <th>最终URL</th>
-                        <th>操作</th>
-                      </tr>
-                    </thead>
-                    <tbody></tbody>
-                  </table>
-                </div>
-              </div>
+      // ==================== Main App Component ====================
+      function App() {
+        const [activeTab, setActiveTab] = useState("alists");
+        const [sidebarOpen, setSidebarOpen] = useState(false);
+        const [toast, setToast] = useState(null);
 
-              <div class="emby-config-section">
-                <div class="section-header">
-                  <h3>Alist Strm 规则</h3>
-                  <button
-                    id="addAlistStrmBtn"
-                    class="ui-btn ui-btn-sm ui-btn-primary"
-                  >
-                    添加规则
-                  </button>
-                </div>
-                <div class="table-wrap">
-                  <table id="alistStrmTable" class="ui-table">
-                    <thead>
-                      <tr>
-                        <th>启用</th>
-                        <th>匹配规则</th>
-                        <th>操作</th>
-                        <th>Alist</th>
-                        <th>转码</th>
-                        <th>原始URL</th>
-                        <th>操作</th>
-                      </tr>
-                    </thead>
-                    <tbody></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
+        // Load initial tab from localStorage
+        useEffect(() => {
+          try {
+            const saved = localStorage.getItem("astrm_active_tab");
+            if (saved && ["alists", "jobs", "emby", "logs"].includes(saved)) {
+              setActiveTab(saved);
+            }
+          } catch (e) {
+            console.error("Failed to load active tab:", e);
+          }
+        }, []);
 
-        <!-- Floating Add Buttons - Outside ui-view to always be visible -->
-        <button
-          id="addAlistBtn"
-          class="floating-add-btn"
-          data-tooltip="Add Alist"
-          aria-label="Add Alist"
-          style="display: none"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-        </button>
+        // Save active tab to localStorage
+        useEffect(() => {
+          try {
+            localStorage.setItem("astrm_active_tab", activeTab);
+          } catch (e) {
+            console.error("Failed to save active tab:", e);
+          }
+        }, [activeTab]);
 
-        <button
-          id="addJobBtn"
-          class="floating-add-btn"
-          data-tooltip="Add Job"
-          aria-label="Add Job"
-          style="display: none"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-        </button>
+        const showToast = useCallback((message, type = "info") => {
+          setToast({ message, type });
+        }, []);
 
-        <!-- Logs View -->
-        <div
-          id="viewLogs"
-          class="ui-view"
-          role="tabpanel"
-          aria-labelledby="navLogs"
-        >
-          <section class="panel">
-            <div class="ui-toolbar">
-              <h2>运行日志</h2>
-              <div style="display: flex; gap: 12px; align-items: center">
+        const hideToast = useCallback(() => {
+          setToast(null);
+        }, []);
+
+        // Close sidebar on mobile after navigation
+        const handleTabChange = (tab) => {
+          setActiveTab(tab);
+          if (window.innerWidth <= 768) {
+            setSidebarOpen(false);
+          }
+        };
+
+        return (
+          <>
+            {/* Header */}
+            <header className="editorial-header">
+              <div className="header-container">
                 <button
-                  id="toggleAutoScrollBtn"
-                  class="ui-btn ui-btn-sm ui-btn-ghost"
-                  title="切换自动滚动"
+                  className="menu-toggle"
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  aria-label="Toggle Menu"
                 >
                   <svg
-                    width="16"
-                    height="16"
+                    width="24"
+                    height="24"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    stroke-width="2"
+                    strokeWidth="2"
                   >
-                    <polyline points="17 1 21 5 17 9"></polyline>
-                    <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
-                    <polyline points="7 23 3 19 7 15"></polyline>
-                    <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
                   </svg>
-                  <span id="autoScrollText">自动滚动: 开</span>
+                </button>
+                <div className="brand">
+                  <h1 className="brand-title">Astrm</h1>
+                  <span className="brand-badge">ADMIN</span>
+                </div>
+              </div>
+            </header>
+
+            <div className="editorial-layout">
+              {/* Sidebar */}
+              <aside
+                className={`editorial-sidebar ${sidebarOpen ? "open" : ""}`}
+              >
+                <nav className="sidebar-nav">
+                  <div className="nav-section">
+                    <span className="nav-label">NAVIGATION</span>
+                    <button
+                      className={`nav-item ${
+                        activeTab === "alists" ? "active" : ""
+                      }`}
+                      onClick={() => handleTabChange("alists")}
+                    >
+                      <span className="nav-indicator"></span>
+                      <span className="nav-text">Alists</span>
+                    </button>
+                    <button
+                      className={`nav-item ${
+                        activeTab === "jobs" ? "active" : ""
+                      }`}
+                      onClick={() => handleTabChange("jobs")}
+                    >
+                      <span className="nav-indicator"></span>
+                      <span className="nav-text">Jobs</span>
+                    </button>
+                    <button
+                      className={`nav-item ${
+                        activeTab === "emby" ? "active" : ""
+                      }`}
+                      onClick={() => handleTabChange("emby")}
+                    >
+                      <span className="nav-indicator"></span>
+                      <span className="nav-text">Emby</span>
+                    </button>
+                    <button
+                      className={`nav-item ${
+                        activeTab === "logs" ? "active" : ""
+                      }`}
+                      onClick={() => handleTabChange("logs")}
+                    >
+                      <span className="nav-indicator"></span>
+                      <span className="nav-text">Logs</span>
+                    </button>
+                  </div>
+                </nav>
+              </aside>
+
+              {/* Backdrop for mobile */}
+              {sidebarOpen && (
+                <div
+                  className="sidebar-backdrop"
+                  onClick={() => setSidebarOpen(false)}
+                ></div>
+              )}
+
+              {/* Main Content */}
+              <main className="editorial-main">
+                <div className="content-grid">
+                  {activeTab === "alists" && (
+                    <AlistsView showToast={showToast} />
+                  )}
+                  {activeTab === "jobs" && <JobsView showToast={showToast} />}
+                  {activeTab === "emby" && <EmbyView showToast={showToast} />}
+                  {activeTab === "logs" && <LogsView showToast={showToast} />}
+                </div>
+              </main>
+            </div>
+
+            {/* Toast */}
+            {toast && (
+              <Toast
+                message={toast.message}
+                type={toast.type}
+                onClose={hideToast}
+              />
+            )}
+          </>
+        );
+      }
+
+      // ==================== Alists View ====================
+      function AlistsView({ showToast }) {
+        const [alists, setAlists] = useState([]);
+        const [loading, setLoading] = useState(true);
+        const [editingItem, setEditingItem] = useState(null);
+        const [showModal, setShowModal] = useState(false);
+
+        const loadAlists = useCallback(async () => {
+          try {
+            setLoading(true);
+            const data = await api.get("/api/alist");
+            setAlists(data || []);
+          } catch (error) {
+            showToast(error.message || "加载失败", "error");
+          } finally {
+            setLoading(false);
+          }
+        }, [showToast]);
+
+        useEffect(() => {
+          loadAlists();
+        }, [loadAlists]);
+
+        const handleAdd = () => {
+          setEditingItem({ name: "", endpoint: "", token: "" });
+          setShowModal(true);
+        };
+
+        const handleEdit = (item) => {
+          setEditingItem({ ...item });
+          setShowModal(true);
+        };
+
+        const handleSave = async (item) => {
+          try {
+            if (item.name) {
+              // Update existing
+              await api.put(`/api/alist/${item.name}`, item);
+              showToast("保存成功", "success");
+            } else {
+              // Create new
+              await api.post("/api/alist", item);
+              showToast("创建成功", "success");
+            }
+            setShowModal(false);
+            setEditingItem(null);
+            loadAlists();
+          } catch (error) {
+            showToast(error.message || "保存失败", "error");
+          }
+        };
+
+        const handleDelete = async (name) => {
+          if (!confirm(`确定要删除 ${name} 吗？`)) return;
+          try {
+            await api.delete(`/api/alist/${name}`);
+            showToast("删除成功", "success");
+            loadAlists();
+          } catch (error) {
+            showToast(error.message || "删除失败", "error");
+          }
+        };
+
+        return (
+          <div className="view-container">
+            <div className="view-header">
+              <div className="header-content">
+                <h2 className="view-title">Alists Management</h2>
+                <p className="view-subtitle">管理你的 Alist 配置</p>
+              </div>
+              <button className="btn-primary" onClick={handleAdd}>
+                <span className="btn-icon">+</span>
+                添加 Alist
+              </button>
+            </div>
+
+            <div className="section-divider"></div>
+
+            {loading ? (
+              <div className="loading-state">加载中...</div>
+            ) : (
+              <>
+                {/* Desktop table */}
+                <div className="data-table desktop-only">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>名称</th>
+                        <th>入口</th>
+                        <th>Token</th>
+                        <th className="actions-col">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {alists.map((item, index) => (
+                        <tr key={index}>
+                          <td className="cell-bold">{item.name}</td>
+                          <td className="cell-mono">{item.endpoint}</td>
+                          <td className="cell-truncate">{item.token}</td>
+                          <td className="actions-col">
+                            <button
+                              className="btn-action"
+                              onClick={() => handleEdit(item)}
+                            >
+                              编辑
+                            </button>
+                            <button
+                              className="btn-action btn-danger"
+                              onClick={() => handleDelete(item.name)}
+                            >
+                              删除
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {alists.length === 0 && (
+                    <div className="empty-state">暂无数据</div>
+                  )}
+                </div>
+
+                {/* Mobile cards */}
+                <div className="mobile-only" style={{ display: "none" }}>
+                  {alists.length === 0 ? (
+                    <div className="empty-state">暂无数据</div>
+                  ) : (
+                    alists.map((item, index) => (
+                      <div
+                        key={index}
+                        className="mobile-card"
+                        style={{
+                          background: "var(--color-paper)",
+                          border: "2px solid var(--color-border)",
+                          borderRadius: "8px",
+                          padding: "20px",
+                          marginBottom: "16px",
+                        }}
+                      >
+                        <h3
+                          style={{
+                            fontSize: "1.1rem",
+                            fontWeight: "600",
+                            margin: 0,
+                            marginBottom: "16px",
+                          }}
+                        >
+                          {item.name}
+                        </h3>
+                        <div
+                          style={{
+                            display: "grid",
+                            gap: "12px",
+                            fontSize: "0.9rem",
+                          }}
+                        >
+                          <div>
+                            <span
+                              style={{
+                                color: "var(--color-text-secondary)",
+                                fontSize: "0.75rem",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.05em",
+                              }}
+                            >
+                              入口
+                            </span>
+                            <div
+                              style={{
+                                marginTop: "4px",
+                                fontFamily: "var(--font-mono)",
+                                fontSize: "0.85rem",
+                                wordBreak: "break-all",
+                              }}
+                            >
+                              {item.endpoint}
+                            </div>
+                          </div>
+                          <div>
+                            <span
+                              style={{
+                                color: "var(--color-text-secondary)",
+                                fontSize: "0.75rem",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.05em",
+                              }}
+                            >
+                              Token
+                            </span>
+                            <div
+                              style={{
+                                marginTop: "4px",
+                                fontFamily: "var(--font-mono)",
+                                fontSize: "0.85rem",
+                                wordBreak: "break-all",
+                              }}
+                            >
+                              {item.token}
+                            </div>
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "8px",
+                            marginTop: "20px",
+                            paddingTop: "16px",
+                            borderTop: "1px solid var(--color-border)",
+                          }}
+                        >
+                          <button
+                            className="btn-action"
+                            onClick={() => handleEdit(item)}
+                            style={{ flex: 1 }}
+                          >
+                            编辑
+                          </button>
+                          <button
+                            className="btn-action btn-danger"
+                            onClick={() => handleDelete(item.name)}
+                            style={{ flex: 1 }}
+                          >
+                            删除
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+
+            {showModal && (
+              <AlistModal
+                item={editingItem}
+                onSave={handleSave}
+                onClose={() => setShowModal(false)}
+              />
+            )}
+          </div>
+        );
+      }
+
+      // ==================== Alist Modal ====================
+      function AlistModal({ item, onSave, onClose }) {
+        const [formData, setFormData] = useState(item);
+
+        const handleChange = (field, value) => {
+          setFormData((prev) => ({ ...prev, [field]: value }));
+        };
+
+        const handleSubmit = (e) => {
+          e.preventDefault();
+          onSave(formData);
+        };
+
+        return (
+          <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3 className="modal-title">
+                  {item.name ? "编辑 Alist" : "添加 Alist"}
+                </h3>
+                <button className="modal-close" onClick={onClose}>
+                  ✕
+                </button>
+              </div>
+              <form onSubmit={handleSubmit}>
+                <div className="modal-body">
+                  <div className="form-field">
+                    <label>名称</label>
+                    <input
+                      type="text"
+                      value={formData.name || ""}
+                      onChange={(e) => handleChange("name", e.target.value)}
+                      required
+                      disabled={item.name} // Disable editing name for existing items
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>入口</label>
+                    <input
+                      type="text"
+                      value={formData.endpoint || ""}
+                      onChange={(e) => handleChange("endpoint", e.target.value)}
+                      placeholder="http://localhost:5244"
+                      required
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Token</label>
+                    <input
+                      type="text"
+                      value={formData.token || ""}
+                      onChange={(e) => handleChange("token", e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={onClose}
+                  >
+                    取消
+                  </button>
+                  <button type="submit" className="btn-primary">
+                    保存
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+      }
+
+      // ==================== Jobs View ====================
+      function JobsView({ showToast }) {
+        const [jobs, setJobs] = useState([]);
+        const [loading, setLoading] = useState(true);
+        const [editingItem, setEditingItem] = useState(null);
+        const [showModal, setShowModal] = useState(false);
+        const pollingRef = useRef(null);
+
+        const loadJobs = useCallback(async () => {
+          try {
+            const data = await api.get("/api/job");
+            setJobs(data || []);
+            if (loading) setLoading(false);
+          } catch (error) {
+            if (loading) {
+              showToast(error.message || "加载失败", "error");
+              setLoading(false);
+            }
+          }
+        }, [showToast, loading]);
+
+        useEffect(() => {
+          loadJobs();
+          // Start polling
+          pollingRef.current = setInterval(loadJobs, 2000);
+          return () => {
+            if (pollingRef.current) clearInterval(pollingRef.current);
+          };
+        }, [loadJobs]);
+
+        const handleAdd = () => {
+          setEditingItem({
+            name: "",
+            alist: 0,
+            from: "",
+            dest: "",
+            mode: "copy",
+            spec: "",
+            concurrency: 3,
+          });
+          setShowModal(true);
+        };
+
+        const handleEdit = (item) => {
+          setEditingItem({ ...item });
+          setShowModal(true);
+        };
+
+        const handleCopy = (item) => {
+          // Copy job without id, so it will be created as new
+          const { id, ...itemWithoutId } = item;
+          setEditingItem({ ...itemWithoutId, name: `${item.name} (副本)` });
+          setShowModal(true);
+        };
+
+        const handleSave = async (item) => {
+          try {
+            if (item.id) {
+              // Update existing
+              await api.put(`/api/job/${item.id}`, item);
+              showToast("保存成功", "success");
+            } else {
+              // Create new
+              await api.post("/api/job", item);
+              showToast("创建成功", "success");
+            }
+            setShowModal(false);
+            setEditingItem(null);
+            loadJobs();
+          } catch (error) {
+            showToast(error.message || "保存失败", "error");
+          }
+        };
+
+        const handleDelete = async (id) => {
+          if (!confirm(`确定要删除这个任务吗？`)) return;
+          try {
+            await api.delete(`/api/job/${id}`);
+            showToast("删除成功", "success");
+            loadJobs();
+          } catch (error) {
+            showToast(error.message || "删除失败", "error");
+          }
+        };
+
+        const handleRunJob = async (id) => {
+          try {
+            await api.post(`/api/job/${id}`, {});
+            showToast("任务已启动", "success");
+            setTimeout(loadJobs, 500);
+          } catch (error) {
+            showToast(error.message || "启动失败", "error");
+          }
+        };
+
+        const handleStopJob = async (id) => {
+          // Note: Backend doesn't have stop endpoint
+          showToast("任务将在当前周期结束后停止", "info");
+        };
+
+        const renderStatus = (status) => {
+          const statusMap = {
+            idle: { text: "空闲", color: "#94a3b8" },
+            running: { text: "运行中", color: "#3b82f6" },
+            stopped: { text: "已停止", color: "#64748b" },
+            completed: { text: "已完成", color: "#10b981" },
+            failed: { text: "失败", color: "#ef4444" },
+          };
+          const config = statusMap[status] || statusMap.idle;
+          return (
+            <span className="status-badge" style={{ color: config.color }}>
+              {config.text}
+            </span>
+          );
+        };
+
+        return (
+          <div className="view-container">
+            <div className="view-header">
+              <div className="header-content">
+                <h2 className="view-title">Jobs Management</h2>
+                <p className="view-subtitle">监控和管理你的定时任务</p>
+              </div>
+              <button className="btn-primary" onClick={handleAdd}>
+                <span className="btn-icon">+</span>
+                添加任务
+              </button>
+            </div>
+
+            <div className="section-divider"></div>
+
+            {loading ? (
+              <div className="loading-state">加载中...</div>
+            ) : (
+              <>
+                {/* Desktop cards grid */}
+                <div className="desktop-only">
+                  {jobs.length === 0 ? (
+                    <div className="empty-state">暂无任务</div>
+                  ) : (
+                    <div className="jobs-grid">
+                      {jobs.map((job, index) => (
+                        <div key={index} className="job-card">
+                          <div className="job-card-header">
+                            <h3 className="job-card-title">{job.name}</h3>
+                            {renderStatus(job.status)}
+                          </div>
+                          <div className="job-card-body">
+                            <div className="job-card-row">
+                              <span className="job-card-label">Alist</span>
+                              <span className="job-card-value value-normal">
+                                {job.alist}
+                              </span>
+                            </div>
+                            <div className="job-card-row">
+                              <span className="job-card-label">源路径</span>
+                              <div className="job-card-value">
+                                {job.from.split("\n").map((path, idx) => (
+                                  <div
+                                    key={idx}
+                                    style={{
+                                      marginBottom:
+                                        idx < job.from.split("\n").length - 1
+                                          ? "4px"
+                                          : "0",
+                                    }}
+                                  >
+                                    {path}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="job-card-row">
+                              <span className="job-card-label">目标路径</span>
+                              <span className="job-card-value">{job.dest}</span>
+                            </div>
+                            <div className="job-card-row">
+                              <span className="job-card-label">模式</span>
+                              <span className="job-card-value value-normal">
+                                {job.mode}
+                              </span>
+                            </div>
+                            {job.opts && Object.keys(job.opts).length > 0 && (
+                              <div className="job-card-row">
+                                <span className="job-card-label">选项</span>
+                                <div
+                                  className="job-card-value"
+                                  style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: "8px",
+                                  }}
+                                >
+                                  {Object.entries(job.opts).map(
+                                    ([key, value]) => (
+                                      <div
+                                        key={key}
+                                        style={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "12px",
+                                          padding: "6px 12px",
+                                          background:
+                                            "var(--color-bg-secondary)",
+                                          borderRadius: "4px",
+                                          border:
+                                            "1px solid var(--color-border)",
+                                        }}
+                                      >
+                                        <span
+                                          style={{
+                                            fontWeight: "600",
+                                            color:
+                                              "var(--color-text-secondary)",
+                                            minWidth: "80px",
+                                            fontSize: "0.8rem",
+                                          }}
+                                        >
+                                          {key}:
+                                        </span>
+                                        <span
+                                          style={{
+                                            flex: 1,
+                                            color: "var(--color-text)",
+                                            fontFamily: "var(--font-mono)",
+                                            fontSize: "0.85rem",
+                                          }}
+                                        >
+                                          {typeof value === "object"
+                                            ? JSON.stringify(value)
+                                            : String(value)}
+                                        </span>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            <div className="job-card-row">
+                              <span className="job-card-label">并发数</span>
+                              <span className="job-card-value value-normal">
+                                {job.concurrency}
+                              </span>
+                            </div>
+                            <div className="job-card-row">
+                              <span className="job-card-label">定时规则</span>
+                              <span className="job-card-value">{job.spec}</span>
+                            </div>
+                          </div>
+                          <div className="job-card-actions">
+                            {job.status === "running" ? (
+                              <button
+                                className="btn-action btn-danger"
+                                onClick={() => handleStopJob(job.id)}
+                              >
+                                停止
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  className="btn-action"
+                                  onClick={() => handleRunJob(job.id)}
+                                >
+                                  运行
+                                </button>
+                                <button
+                                  className="btn-action"
+                                  onClick={() => handleEdit(job)}
+                                >
+                                  编辑
+                                </button>
+                                <button
+                                  className="btn-action"
+                                  onClick={() => handleCopy(job)}
+                                >
+                                  复制
+                                </button>
+                                <button
+                                  className="btn-action btn-danger"
+                                  onClick={() => handleDelete(job.id)}
+                                >
+                                  删除
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Mobile cards */}
+                <div className="mobile-only" style={{ display: "none" }}>
+                  {jobs.length === 0 ? (
+                    <div className="empty-state">暂无任务</div>
+                  ) : (
+                    jobs.map((job, index) => (
+                      <div
+                        key={index}
+                        className="mobile-card"
+                        style={{
+                          background: "var(--color-paper)",
+                          border: "2px solid var(--color-border)",
+                          borderRadius: "8px",
+                          padding: "20px",
+                          marginBottom: "16px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: "16px",
+                          }}
+                        >
+                          <h3
+                            style={{
+                              fontSize: "1.1rem",
+                              fontWeight: "600",
+                              margin: 0,
+                            }}
+                          >
+                            {job.name}
+                          </h3>
+                          {renderStatus(job.status)}
+                        </div>
+                        <div
+                          style={{
+                            display: "grid",
+                            gap: "12px",
+                            fontSize: "0.9rem",
+                          }}
+                        >
+                          <div>
+                            <span
+                              style={{
+                                color: "var(--color-text-secondary)",
+                                fontSize: "0.75rem",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.05em",
+                              }}
+                            >
+                              Alist
+                            </span>
+                            <div style={{ marginTop: "4px" }}>{job.alist}</div>
+                          </div>
+                          <div>
+                            <span
+                              style={{
+                                color: "var(--color-text-secondary)",
+                                fontSize: "0.75rem",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.05em",
+                              }}
+                            >
+                              源路径
+                            </span>
+                            <div
+                              style={{
+                                marginTop: "4px",
+                                fontFamily: "var(--font-mono)",
+                                fontSize: "0.85rem",
+                                wordBreak: "break-all",
+                              }}
+                            >
+                              {job.from.split("\n").map((path, idx) => (
+                                <div
+                                  key={idx}
+                                  style={{
+                                    marginBottom:
+                                      idx < job.from.split("\n").length - 1
+                                        ? "4px"
+                                        : "0",
+                                  }}
+                                >
+                                  {path}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <span
+                              style={{
+                                color: "var(--color-text-secondary)",
+                                fontSize: "0.75rem",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.05em",
+                              }}
+                            >
+                              目标路径
+                            </span>
+                            <div
+                              style={{
+                                marginTop: "4px",
+                                fontFamily: "var(--font-mono)",
+                                fontSize: "0.85rem",
+                                wordBreak: "break-all",
+                              }}
+                            >
+                              {job.dest}
+                            </div>
+                          </div>
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "1fr 1fr",
+                              gap: "12px",
+                            }}
+                          >
+                            <div>
+                              <span
+                                style={{
+                                  color: "var(--color-text-secondary)",
+                                  fontSize: "0.75rem",
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.05em",
+                                }}
+                              >
+                                模式
+                              </span>
+                              <div style={{ marginTop: "4px" }}>{job.mode}</div>
+                            </div>
+                            <div>
+                              <span
+                                style={{
+                                  color: "var(--color-text-secondary)",
+                                  fontSize: "0.75rem",
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.05em",
+                                }}
+                              >
+                                并发
+                              </span>
+                              <div style={{ marginTop: "4px" }}>
+                                {job.concurrency}
+                              </div>
+                            </div>
+                          </div>
+                          {job.spec && (
+                            <div>
+                              <span
+                                style={{
+                                  color: "var(--color-text-secondary)",
+                                  fontSize: "0.75rem",
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.05em",
+                                }}
+                              >
+                                定时规则
+                              </span>
+                              <div
+                                style={{
+                                  marginTop: "4px",
+                                  fontFamily: "var(--font-mono)",
+                                  fontSize: "0.85rem",
+                                }}
+                              >
+                                {job.spec}
+                              </div>
+                            </div>
+                          )}
+                          {job.opts && Object.keys(job.opts).length > 0 && (
+                            <div>
+                              <span
+                                style={{
+                                  color: "var(--color-text-secondary)",
+                                  fontSize: "0.75rem",
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.05em",
+                                }}
+                              >
+                                选项
+                              </span>
+                              <div
+                                style={{
+                                  marginTop: "8px",
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "8px",
+                                }}
+                              >
+                                {Object.entries(job.opts).map(
+                                  ([key, value]) => (
+                                    <div
+                                      key={key}
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "8px",
+                                        padding: "6px 12px",
+                                        background: "var(--color-bg-secondary)",
+                                        borderRadius: "4px",
+                                        border: "1px solid var(--color-border)",
+                                        fontSize: "0.85rem",
+                                      }}
+                                    >
+                                      <span
+                                        style={{
+                                          fontWeight: "600",
+                                          color: "var(--color-text-secondary)",
+                                          fontSize: "0.75rem",
+                                        }}
+                                      >
+                                        {key}:
+                                      </span>
+                                      <span
+                                        style={{
+                                          flex: 1,
+                                          color: "var(--color-text)",
+                                          fontFamily: "var(--font-mono)",
+                                          wordBreak: "break-all",
+                                        }}
+                                      >
+                                        {typeof value === "object"
+                                          ? JSON.stringify(value)
+                                          : String(value)}
+                                      </span>
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "8px",
+                            marginTop: "20px",
+                            paddingTop: "16px",
+                            borderTop: "1px solid var(--color-border)",
+                          }}
+                        >
+                          {job.status === "running" ? (
+                            <button
+                              className="btn-action btn-danger"
+                              onClick={() => handleStopJob(job.id)}
+                              style={{ flex: 1 }}
+                            >
+                              停止
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                className="btn-action"
+                                onClick={() => handleRunJob(job.id)}
+                                style={{ flex: 1 }}
+                              >
+                                运行
+                              </button>
+                              <button
+                                className="btn-action"
+                                onClick={() => handleEdit(job)}
+                                style={{ flex: 1 }}
+                              >
+                                编辑
+                              </button>
+                              <button
+                                className="btn-action"
+                                onClick={() => handleCopy(job)}
+                                style={{ flex: 1 }}
+                              >
+                                复制
+                              </button>
+                              <button
+                                className="btn-action btn-danger"
+                                onClick={() => handleDelete(job.id)}
+                                style={{ flex: 1 }}
+                              >
+                                删除
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+
+            {showModal && (
+              <JobModal
+                item={editingItem}
+                onSave={handleSave}
+                onClose={() => setShowModal(false)}
+              />
+            )}
+          </div>
+        );
+      }
+
+      // ==================== Job Modal ====================
+      function JobModal({ item, onSave, onClose }) {
+        const [formData, setFormData] = useState(item);
+        const [alists, setAlists] = useState([]);
+        const [showPathSelector, setShowPathSelector] = useState(false);
+        const [pathSelectorType, setPathSelectorType] = useState(null); // 'from' or 'dest'
+
+        useEffect(() => {
+          // Load alist configurations
+          api
+            .get("/api/alist")
+            .then((data) => {
+              setAlists(data || []);
+            })
+            .catch((err) => {
+              console.error("Failed to load alists:", err);
+            });
+        }, []);
+
+        const handleChange = (field, value) => {
+          setFormData((prev) => ({ ...prev, [field]: value }));
+        };
+
+        const handleSubmit = (e) => {
+          e.preventDefault();
+          // Parse opts JSON if present
+          let finalData = { ...formData };
+          if (typeof formData.opts === "string") {
+            try {
+              finalData.opts = formData.opts ? JSON.parse(formData.opts) : {};
+            } catch (err) {
+              alert("选项 (opts) 必须是有效的 JSON 格式");
+              return;
+            }
+          }
+          onSave(finalData);
+        };
+
+        const handleOpenPathSelector = (type) => {
+          if (type === "from" && !formData.alist && formData.alist !== 0) {
+            alert("请先选择 Alist");
+            return;
+          }
+          setPathSelectorType(type);
+          setShowPathSelector(true);
+        };
+
+        const handlePathsSelected = (paths) => {
+          if (pathSelectorType === "from") {
+            handleChange("from", paths.join("\n"));
+          } else if (pathSelectorType === "dest") {
+            handleChange("dest", paths[0] || "");
+          }
+          setShowPathSelector(false);
+        };
+
+        return (
+          <div className="modal-overlay" onClick={onClose}>
+            <div
+              className="modal-panel modal-large"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h3 className="modal-title">
+                  {item.id ? "编辑任务" : "添加任务"}
+                </h3>
+                <button className="modal-close" onClick={onClose}>
+                  ✕
+                </button>
+              </div>
+              <form onSubmit={handleSubmit}>
+                <div className="modal-body">
+                  <div className="form-row">
+                    <div className="form-field">
+                      <label>任务名称</label>
+                      <input
+                        type="text"
+                        value={formData.name || ""}
+                        onChange={(e) => handleChange("name", e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label>Alist 索引</label>
+                      <select
+                        value={formData.alist ?? 0}
+                        onChange={(e) =>
+                          handleChange("alist", parseInt(e.target.value))
+                        }
+                        required
+                      >
+                        <option value="">选择 Alist...</option>
+                        {alists.map((alist, idx) => (
+                          <option key={idx} value={idx}>
+                            {idx} - {alist.name} ({alist.endpoint})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-field">
+                    <label>源路径 (每行一个路径)</label>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "12px",
+                        alignItems: "flex-start",
+                      }}
+                    >
+                      <textarea
+                        value={formData.from || ""}
+                        onChange={(e) => handleChange("from", e.target.value)}
+                        placeholder="/path/to/source\n/another/path"
+                        rows="4"
+                        required
+                        style={{ flex: 1 }}
+                      />
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => handleOpenPathSelector("from")}
+                        style={{ whiteSpace: "nowrap", padding: "12px 20px" }}
+                      >
+                        📁 选择路径
+                      </button>
+                    </div>
+                  </div>
+                  <div className="form-field">
+                    <label>目标路径</label>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "12px",
+                        alignItems: "center",
+                      }}
+                    >
+                      <input
+                        type="text"
+                        value={formData.dest || ""}
+                        onChange={(e) => handleChange("dest", e.target.value)}
+                        placeholder="/path/to/destination"
+                        required
+                        style={{ flex: 1 }}
+                      />
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => handleOpenPathSelector("dest")}
+                        style={{ whiteSpace: "nowrap", padding: "12px 20px" }}
+                      >
+                        📁 选择
+                      </button>
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-field">
+                      <label>模式</label>
+                      <select
+                        value={formData.mode || "copy"}
+                        onChange={(e) => handleChange("mode", e.target.value)}
+                      >
+                        <option value="alist_url">Alist URL</option>
+                        <option value="alist_path">Alist Path</option>
+                        <option value="raw_url">Raw URL</option>
+                      </select>
+                    </div>
+                    <div className="form-field">
+                      <label>并发数</label>
+                      <input
+                        type="number"
+                        value={formData.concurrency || 3}
+                        onChange={(e) =>
+                          handleChange("concurrency", parseInt(e.target.value))
+                        }
+                        min="1"
+                        max="10"
+                      />
+                    </div>
+                  </div>
+                  <div className="form-field">
+                    <label>选项 (JSON)</label>
+                    <textarea
+                      value={
+                        typeof formData.opts === "object"
+                          ? JSON.stringify(formData.opts, null, 2)
+                          : formData.opts || "{}"
+                      }
+                      onChange={(e) => handleChange("opts", e.target.value)}
+                      placeholder='{"key": "value"}'
+                      rows="4"
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>定时规则 (Cron)</label>
+                    <input
+                      type="text"
+                      value={formData.spec || ""}
+                      onChange={(e) => handleChange("spec", e.target.value)}
+                      placeholder="0 0 * * * (每天零点)"
+                    />
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={onClose}
+                  >
+                    取消
+                  </button>
+                  <button type="submit" className="btn-primary">
+                    保存
+                  </button>
+                </div>
+              </form>
+            </div>
+            {showPathSelector && (
+              <PathSelectorModal
+                type={pathSelectorType}
+                jobId={item.id}
+                alistIndex={formData.alist}
+                currentPath={
+                  pathSelectorType === "from"
+                    ? (formData.from || "").split("\n").filter((p) => p.trim())
+                    : [formData.dest || "/"]
+                }
+                onConfirm={handlePathsSelected}
+                onClose={() => setShowPathSelector(false)}
+              />
+            )}
+          </div>
+        );
+      }
+
+      // ==================== Path Selector Modal ====================
+      function PathSelectorModal({
+        type,
+        jobId,
+        alistIndex,
+        currentPath,
+        onConfirm,
+        onClose,
+      }) {
+        const [loading, setLoading] = useState(false);
+        const [items, setItems] = useState([]);
+        const [path, setPath] = useState("");
+        const [selectedPaths, setSelectedPaths] = useState(
+          new Set(Array.isArray(currentPath) ? currentPath : [currentPath])
+        );
+        const [pathHistory, setPathHistory] = useState([]);
+        const [forwardHistory, setForwardHistory] = useState([]);
+
+        const isLocalPath = type === "dest";
+        const isMultiSelect = type === "from";
+
+        useEffect(() => {
+          loadDirectory("");
+        }, []);
+
+        const loadDirectory = async (dirPath) => {
+          setLoading(true);
+          try {
+            let response;
+            if (isLocalPath) {
+              response = await api.get("/api/local/list-dir", {
+                path: dirPath || "/",
+              });
+            } else {
+              // Use alist index if available, otherwise use job ID
+              const useAlistIndex =
+                alistIndex !== undefined && alistIndex !== null;
+              const endpoint = useAlistIndex
+                ? `/api/alist/${alistIndex}/list-item`
+                : `/api/job/${jobId}/list-item`;
+              response = await api.get(endpoint, { root: dirPath || "" });
+            }
+            setItems(response.data || []);
+            setPath(dirPath);
+          } catch (error) {
+            console.error("Failed to load directory:", error);
+            setItems([]);
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        const handleEnter = (itemName) => {
+          setPathHistory([...pathHistory, path]);
+          setForwardHistory([]); // Clear forward history when navigating to a new directory
+          // For alist items, item.name is already the full path, use it directly
+          // For local path, we need to construct the full path
+          // const newPath = itemName;
+          loadDirectory(itemName);
+        };
+
+        const handleBack = () => {
+          if (pathHistory.length > 0) {
+            const newHistory = [...pathHistory];
+            const prevPath = newHistory.pop();
+            setPathHistory(newHistory);
+            setForwardHistory([path, ...forwardHistory]);
+            loadDirectory(prevPath);
+          }
+        };
+
+        const handleForward = () => {
+          if (forwardHistory.length > 0) {
+            const newForward = [...forwardHistory];
+            const nextPath = newForward.shift();
+            setForwardHistory(newForward);
+            setPathHistory([...pathHistory, path]);
+            loadDirectory(nextPath);
+          }
+        };
+
+        const navigateToPath = (targetPath) => {
+          setPathHistory([...pathHistory, path]);
+          setForwardHistory([]);
+          loadDirectory(targetPath);
+        };
+
+        const handleToggleSelect = (itemName) => {
+          const newSelected = new Set(selectedPaths);
+          if (newSelected.has(itemName)) {
+            newSelected.delete(itemName);
+          } else {
+            if (!isMultiSelect) {
+              newSelected.clear();
+            }
+            newSelected.add(itemName);
+          }
+          setSelectedPaths(newSelected);
+        };
+
+        const handleConfirm = () => {
+          onConfirm(Array.from(selectedPaths));
+        };
+
+        const handleQuickSelect = (itemName) => {
+          // For local path selector, directly select and close
+          if (isLocalPath) {
+            onConfirm([itemName]);
+          }
+        };
+
+        // Breadcrumb segments
+        const pathSegments = path ? path.split("/").filter((s) => s) : [];
+
+        return (
+          <div
+            className="modal-overlay"
+            onClick={onClose}
+            style={{ zIndex: 1001 }}
+          >
+            <div
+              className="modal-panel modal-large"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h3 className="modal-title">
+                  {isLocalPath ? "选择本地路径" : "选择源路径"}
+                </h3>
+                <button className="modal-close" onClick={onClose}>
+                  ✕
+                </button>
+              </div>
+              <div className="modal-body">
+                {/* Breadcrumb with navigation buttons */}
+                <div
+                  style={{
+                    marginBottom: "16px",
+                    display: "flex",
+                    gap: "12px",
+                    alignItems: "center",
+                  }}
+                >
+                  {/* Back and Forward buttons */}
+                  <div style={{ display: "flex", gap: "4px" }}>
+                    <button
+                      type="button"
+                      className="btn-action"
+                      onClick={handleBack}
+                      disabled={pathHistory.length === 0}
+                      style={{
+                        padding: "8px 12px",
+                        opacity: pathHistory.length === 0 ? 0.4 : 1,
+                        cursor:
+                          pathHistory.length === 0 ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      ←
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-action"
+                      onClick={handleForward}
+                      disabled={forwardHistory.length === 0}
+                      style={{
+                        padding: "8px 12px",
+                        opacity: forwardHistory.length === 0 ? 0.4 : 1,
+                        cursor:
+                          forwardHistory.length === 0
+                            ? "not-allowed"
+                            : "pointer",
+                      }}
+                    >
+                      →
+                    </button>
+                  </div>
+
+                  {/* Path display */}
+                  <div
+                    style={{
+                      flex: 1,
+                      padding: "8px 12px",
+                      background: "var(--color-bg-secondary)",
+                      borderRadius: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "0.9rem",
+                      overflow: "auto",
+                    }}
+                  >
+                    <span
+                      style={{
+                        cursor: "pointer",
+                        color: "var(--color-accent)",
+                        fontWeight: "600",
+                      }}
+                      onClick={() => navigateToPath("")}
+                    >
+                      {isLocalPath ? "/" : "根目录"}
+                    </span>
+                    {pathSegments.map((segment, idx) => {
+                      const segmentPath = pathSegments
+                        .slice(0, idx + 1)
+                        .join("/");
+                      return (
+                        <React.Fragment key={idx}>
+                          <span
+                            style={{ color: "var(--color-text-secondary)" }}
+                          >
+                            /
+                          </span>
+                          <span
+                            style={{
+                              cursor: "pointer",
+                              color:
+                                idx === pathSegments.length - 1
+                                  ? "var(--color-text)"
+                                  : "var(--color-accent)",
+                              fontWeight:
+                                idx === pathSegments.length - 1 ? "600" : "400",
+                            }}
+                            onClick={() =>
+                              idx < pathSegments.length - 1 &&
+                              navigateToPath(segmentPath)
+                            }
+                          >
+                            {segment}
+                          </span>
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Selected paths (for multi-select) */}
+                {isMultiSelect && selectedPaths.size > 0 && (
+                  <div
+                    style={{
+                      marginBottom: "16px",
+                      padding: "12px",
+                      background: "var(--color-accent-bg)",
+                      borderRadius: "4px",
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "8px",
+                    }}
+                  >
+                    {Array.from(selectedPaths).map((p) => (
+                      <span
+                        key={p}
+                        style={{
+                          padding: "4px 12px",
+                          background: "var(--color-paper)",
+                          border: "1px solid var(--color-border)",
+                          borderRadius: "4px",
+                          fontSize: "0.85rem",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        {p}
+                        <span
+                          style={{ cursor: "pointer", fontWeight: "bold" }}
+                          onClick={() => handleToggleSelect(p)}
+                        >
+                          ✕
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Directory list */}
+                <div
+                  style={{
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "4px",
+                    maxHeight: "400px",
+                    overflowY: "auto",
+                  }}
+                >
+                  {loading ? (
+                    <div className="loading-state">加载中...</div>
+                  ) : items.length === 0 ? (
+                    <div className="empty-state">空目录</div>
+                  ) : (
+                    items.map((item, idx) => {
+                      const isDir = isLocalPath || item.is_dir;
+                      // Extract just the filename/directory name from the full path
+                      const displayName =
+                        item.name
+                          .split("/")
+                          .filter((p) => p)
+                          .pop() || item.name;
+                      const isSelected = selectedPaths.has(item.name);
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            padding: "12px",
+                            borderBottom:
+                              idx < items.length - 1
+                                ? "1px solid var(--color-border)"
+                                : "none",
+                            gap: "12px",
+                          }}
+                        >
+                          <span style={{ fontSize: "1.2rem" }}>
+                            {isDir ? "📁" : "📄"}
+                          </span>
+                          <span
+                            style={{
+                              flex: 1,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {displayName}
+                          </span>
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            {isDir && (
+                              <button
+                                className="btn-action"
+                                onClick={() => handleEnter(item.name)}
+                              >
+                                进入
+                              </button>
+                            )}
+                            {isLocalPath ? (
+                              <button
+                                className="btn-action"
+                                onClick={() => handleQuickSelect(item.name)}
+                              >
+                                选择
+                              </button>
+                            ) : (
+                              <button
+                                className={`btn-action ${
+                                  isSelected ? "btn-primary" : ""
+                                }`}
+                                onClick={() => handleToggleSelect(item.name)}
+                              >
+                                {isSelected ? "已选" : "选择"}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn-secondary" onClick={onClose}>
+                  取消
+                </button>
+                {isMultiSelect && (
+                  <button
+                    className="btn-primary"
+                    onClick={handleConfirm}
+                    disabled={selectedPaths.size === 0}
+                  >
+                    确认选择 ({selectedPaths.size})
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ==================== Emby View ====================
+      function EmbyView({ showToast }) {
+        const [config, setConfig] = useState({ addr: "", apiKey: "" });
+        const [loading, setLoading] = useState(true);
+
+        useEffect(() => {
+          const loadConfig = async () => {
+            try {
+              const data = await api.get("/api/emby");
+              setConfig(data.emby || { addr: "", apiKey: "" });
+            } catch (error) {
+              showToast(error.message || "加载失败", "error");
+            } finally {
+              setLoading(false);
+            }
+          };
+          loadConfig();
+        }, [showToast]);
+
+        const handleSave = async () => {
+          try {
+            await api.put("/api/emby", { emby: config });
+            showToast("保存成功", "success");
+          } catch (error) {
+            showToast(error.message || "保存失败", "error");
+          }
+        };
+
+        return (
+          <div className="view-container">
+            <div className="view-header">
+              <div className="header-content">
+                <h2 className="view-title">Emby Configuration</h2>
+                <p className="view-subtitle">配置你的 Emby 服务器设置</p>
+              </div>
+            </div>
+
+            <div className="section-divider"></div>
+
+            {loading ? (
+              <div className="loading-state">加载中...</div>
+            ) : (
+              <div className="config-form">
+                <div className="form-field">
+                  <label>服务器地址</label>
+                  <input
+                    type="text"
+                    value={config.addr || ""}
+                    onChange={(e) =>
+                      setConfig((prev) => ({ ...prev, addr: e.target.value }))
+                    }
+                    placeholder="http://localhost:8096"
+                  />
+                </div>
+                <div className="form-field">
+                  <label>API Key</label>
+                  <input
+                    type="text"
+                    value={config.apiKey || ""}
+                    onChange={(e) =>
+                      setConfig((prev) => ({ ...prev, apiKey: e.target.value }))
+                    }
+                    placeholder="Your Emby API Key"
+                  />
+                </div>
+                <button className="btn-primary" onClick={handleSave}>
+                  保存配置
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // ==================== Logs View ====================
+      function LogsView({ showToast }) {
+        const [logs, setLogs] = useState([]);
+        const [autoScroll, setAutoScroll] = useState(true);
+        const [wrapLines, setWrapLines] = useState(false);
+        const logsEndRef = useRef(null);
+        const pollingRef = useRef(null);
+        const logViewerRef = useRef(null);
+        const scrollPosRef = useRef(0);
+
+        const loadLogs = useCallback(async () => {
+          try {
+            // Save current horizontal scroll position only in non-wrap mode
+            if (!wrapLines && logViewerRef.current) {
+              scrollPosRef.current = logViewerRef.current.scrollLeft;
+            }
+
+            const response = await fetch("/api/logs/tail?lines=100");
+            const result = await response.json();
+            if (result.data && Array.isArray(result.data)) {
+              setLogs(result.data.filter((line) => line.trim()));
+            }
+
+            // Restore horizontal scroll position only in non-wrap mode
+            if (
+              !wrapLines &&
+              logViewerRef.current &&
+              scrollPosRef.current > 0
+            ) {
+              setTimeout(() => {
+                if (logViewerRef.current) {
+                  logViewerRef.current.scrollLeft = scrollPosRef.current;
+                }
+              }, 0);
+            }
+          } catch (error) {
+            console.error("Failed to load logs:", error);
+          }
+        }, [wrapLines]);
+
+        useEffect(() => {
+          loadLogs();
+          pollingRef.current = setInterval(loadLogs, 1000);
+          return () => {
+            if (pollingRef.current) clearInterval(pollingRef.current);
+          };
+        }, [loadLogs]);
+
+        useEffect(() => {
+          if (autoScroll && logsEndRef.current) {
+            logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+          }
+        }, [logs, autoScroll]);
+
+        const handleClear = () => {
+          setLogs([]);
+        };
+
+        return (
+          <div className="view-container">
+            <div className="view-header">
+              <div className="header-content">
+                <h2 className="view-title">运行日志</h2>
+                <p className="view-subtitle">实时系统日志</p>
+              </div>
+              <div className="header-actions">
+                <button
+                  className="btn-secondary"
+                  onClick={() => setWrapLines(!wrapLines)}
+                >
+                  自动换行: {wrapLines ? "开" : "关"}
                 </button>
                 <button
-                  id="clearLogsBtn"
-                  class="ui-btn ui-btn-sm ui-btn-ghost"
-                  title="清空显示"
+                  className="btn-secondary"
+                  onClick={() => setAutoScroll(!autoScroll)}
                 >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path
-                      d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
-                    ></path>
-                  </svg>
+                  自动滚动: {autoScroll ? "开" : "关"}
+                </button>
+                <button className="btn-secondary" onClick={handleClear}>
                   清空
                 </button>
-                <button
-                  id="refreshLogsBtn"
-                  class="ui-btn ui-btn-sm ui-btn-primary"
-                  title="刷新日志"
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <polyline points="23 4 23 10 17 10"></polyline>
-                    <polyline points="1 20 1 14 7 14"></polyline>
-                    <path
-                      d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
-                    ></path>
-                  </svg>
+                <button className="btn-primary" onClick={loadLogs}>
                   刷新
                 </button>
               </div>
             </div>
-            <div class="panel-body" style="padding: 0">
-              <div id="logViewer" class="log-viewer-container">
-                <div
-                  style="color: var(--muted); text-align: center; padding: 40px"
-                >
-                  正在加载日志...
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-      </main>
-    </div>
 
-    <!-- Drawer: Add/Edit -->
-    <div
-      class="ui-drawer"
-      id="addEditModal"
-      aria-hidden="true"
-      role="dialog"
-      aria-labelledby="addEditModalLabel"
-    >
-      <div class="ui-drawer-panel">
-        <div class="ui-drawer-header">
-          <h5 class="modal-title" id="addEditModalLabel">Add Item</h5>
-        </div>
-        <div class="ui-drawer-body">
-          <form id="addItemForm" autocomplete="off">
-            <div id="formFieldsContainer"></div>
-          </form>
-        </div>
-        <div class="ui-drawer-footer">
-          <button type="button" class="ui-btn ui-btn-ghost" id="cancelItemBtn">
-            取消
-          </button>
-          <button type="button" class="ui-btn ui-btn-primary" id="saveItemBtn">
-            保存
-          </button>
-        </div>
-      </div>
-    </div>
+            <div className="section-divider"></div>
 
-    <!-- Drawer: Edit Field -->
-    <div
-      class="ui-drawer"
-      id="editModal"
-      aria-hidden="true"
-      role="dialog"
-      aria-labelledby="editModalLabel"
-    >
-      <div class="ui-drawer-panel">
-        <div class="ui-drawer-header">
-          <h5 class="modal-title" id="editModalLabel">Edit Field</h5>
-        </div>
-        <div class="ui-drawer-body">
-          <div id="editorjs"></div>
-        </div>
-        <div class="ui-drawer-footer">
-          <button type="button" class="ui-btn ui-btn-ghost" id="cancelEditBtn">
-            取消
-          </button>
-          <button type="button" class="ui-btn ui-btn-primary" id="saveEditBtn">
-            保存
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Drawer: Edit Strm Rule -->
-    <div
-      class="ui-drawer"
-      id="strmRuleModal"
-      aria-hidden="true"
-      role="dialog"
-      aria-labelledby="strmRuleModalLabel"
-    >
-      <div class="ui-drawer-panel">
-        <div class="ui-drawer-header">
-          <h5 class="modal-title" id="strmRuleModalLabel">编辑规则</h5>
-        </div>
-        <div class="ui-drawer-body">
-          <div id="strmRuleForm" class="config-form"></div>
-        </div>
-        <div class="ui-drawer-footer">
-          <button
-            type="button"
-            class="ui-btn ui-btn-ghost"
-            id="cancelStrmRuleBtn"
-          >
-            取消
-          </button>
-          <button
-            type="button"
-            class="ui-btn ui-btn-primary"
-            id="saveStrmRuleBtn"
-          >
-            保存
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Drawer: Path Selector -->
-    <div
-      class="ui-drawer"
-      id="pathSelectorModal"
-      aria-hidden="true"
-      role="dialog"
-      aria-labelledby="pathSelectorModalLabel"
-    >
-      <div class="ui-drawer-panel">
-        <div class="ui-drawer-header">
-          <h5 class="modal-title" id="pathSelectorModalLabel">选择路径</h5>
-        </div>
-        <div class="ui-drawer-body">
-          <!-- Selected paths (tags) -->
-          <div id="selectedPathsContainer" class="selected-paths"></div>
-
-          <!-- Breadcrumb navigation -->
-          <div id="pathBreadcrumb" class="path-breadcrumb"></div>
-
-          <!-- Directory list -->
-          <div id="pathListContainer" class="path-list-container">
-            <div id="pathList" class="path-list"></div>
             <div
-              id="pathListLoading"
-              class="path-list-loading"
-              style="display: none"
+              className="log-viewer"
+              ref={logViewerRef}
+              style={{
+                whiteSpace: wrapLines ? "pre-wrap" : "pre",
+                wordBreak: wrapLines ? "break-word" : "normal",
+                overflowX: wrapLines ? "hidden" : "auto",
+              }}
             >
-              加载中...
+              {logs.length === 0 ? (
+                <div className="empty-state">暂无日志</div>
+              ) : (
+                logs.map((log, index) => (
+                  <div key={index} className="log-line">
+                    {log}
+                  </div>
+                ))
+              )}
+              <div ref={logsEndRef}></div>
             </div>
           </div>
-        </div>
-        <div class="ui-drawer-footer">
-          <button
-            type="button"
-            class="ui-btn ui-btn-ghost"
-            id="cancelPathSelectorBtn"
-          >
-            取消
-          </button>
-          <button
-            type="button"
-            class="ui-btn ui-btn-primary"
-            id="confirmPathSelectorBtn"
-          >
-            确定
-          </button>
-        </div>
-      </div>
-    </div>
+        );
+      }
 
-    <!-- Toast Container (pure) -->
-    <div id="toastContainer">
-      <div
-        id="liveToast"
-        class="ui-toast"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        <div class="title">Message</div>
-        <div class="toast-body">Done.</div>
-        <button
-          type="button"
-          class="ui-close"
-          data-ui-close="toast"
-          aria-label="Close"
-        >
-          ✕
-        </button>
-      </div>
-    </div>
-
-    <script src="static/editorjs.js"></script>
-    <script src="static/code.js"></script>
-    <script src="static/script.js"></script>
+      // ==================== Render App ====================
+      ReactDOM.render(<App />, document.getElementById("root"));
+    </script>
   </body>
 </html>

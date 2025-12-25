@@ -9,6 +9,6 @@ func Init() {
 	api := r.Group("/api/emby")
 	{
 		api.GET("", get)
-		api.PATCH("", update)
+		api.PUT("", update)
 	}
 }
