@@ -806,10 +806,9 @@ p {
   font-family: var(--font-sans);
 }
 
-/* 源路径和选项滚动容器 */
+/* 源路径和选项滚动容器 - 固定高度确保对齐 */
 .job-card-value.scrollable {
-  min-height: 60px;
-  max-height: 120px;
+  height: 150px;
   overflow-y: auto;
   padding-right: var(--space-sm);
 }
