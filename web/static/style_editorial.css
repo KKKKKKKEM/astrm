@@ -808,6 +808,7 @@ p {
 
 /* 源路径和选项滚动容器 */
 .job-card-value.scrollable {
+  min-height: 60px;
   max-height: 120px;
   overflow-y: auto;
   padding-right: var(--space-sm);
@@ -816,10 +817,16 @@ p {
 /* 通用滚动容器（用于移动端） */
 .scrollable {
   scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s;
+}
+
+.scrollable:hover,
+.scrollable:focus-within {
   scrollbar-color: var(--color-border-heavy) var(--color-bg-secondary);
 }
 
-/* 自定义滚动条样式 */
+/* 自定义滚动条样式 - 默认隐藏 */
 .job-card-value.scrollable::-webkit-scrollbar,
 .scrollable::-webkit-scrollbar {
   width: 6px;
@@ -827,13 +834,27 @@ p {
 
 .job-card-value.scrollable::-webkit-scrollbar-track,
 .scrollable::-webkit-scrollbar-track {
-  background: var(--color-bg-secondary);
+  background: transparent;
 }
 
 .job-card-value.scrollable::-webkit-scrollbar-thumb,
 .scrollable::-webkit-scrollbar-thumb {
-  background: var(--color-border-heavy);
+  background: transparent;
   border-radius: 3px;
+  transition: background 0.3s;
+}
+
+/* 鼠标悬停或滚动时显示滚动条 */
+.job-card-value.scrollable:hover::-webkit-scrollbar-thumb,
+.scrollable:hover::-webkit-scrollbar-thumb,
+.job-card-value.scrollable:active::-webkit-scrollbar-thumb,
+.scrollable:active::-webkit-scrollbar-thumb {
+  background: var(--color-border-heavy);
+}
+
+.job-card-value.scrollable:hover::-webkit-scrollbar-track,
+.scrollable:hover::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
 }
 
 .job-card-value.scrollable::-webkit-scrollbar-thumb:hover,
