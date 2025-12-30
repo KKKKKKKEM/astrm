@@ -806,6 +806,41 @@ p {
   font-family: var(--font-sans);
 }
 
+/* 源路径和选项滚动容器 */
+.job-card-value.scrollable {
+  max-height: 120px;
+  overflow-y: auto;
+  padding-right: var(--space-sm);
+}
+
+/* 通用滚动容器（用于移动端） */
+.scrollable {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-heavy) var(--color-bg-secondary);
+}
+
+/* 自定义滚动条样式 */
+.job-card-value.scrollable::-webkit-scrollbar,
+.scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.job-card-value.scrollable::-webkit-scrollbar-track,
+.scrollable::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+}
+
+.job-card-value.scrollable::-webkit-scrollbar-thumb,
+.scrollable::-webkit-scrollbar-thumb {
+  background: var(--color-border-heavy);
+  border-radius: 3px;
+}
+
+.job-card-value.scrollable::-webkit-scrollbar-thumb:hover,
+.scrollable::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
 .job-card-actions {
   display: flex;
   gap: var(--space-sm);

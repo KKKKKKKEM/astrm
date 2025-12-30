@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Astrm Admin</title>
-    <link rel="stylesheet" href="static/style_editorial.css?v=16" />
+    <link rel="stylesheet" href="static/style_editorial.css?v=17" />
     <meta name="description" content="Astrm Admin - Modern Editorial Layout" />
 
     <!-- Google Fonts: Chinese Serif + Sans Serif -->
@@ -713,7 +713,7 @@
                             </div>
                             <div className="job-card-row">
                               <span className="job-card-label">源路径</span>
-                              <div className="job-card-value">
+                              <div className="job-card-value scrollable">
                                 {job.from.split("\n").map((path, idx) => (
                                   <div
                                     key={idx}
@@ -743,7 +743,7 @@
                               <div className="job-card-row">
                                 <span className="job-card-label">选项</span>
                                 <div
-                                  className="job-card-value"
+                                  className="job-card-value scrollable"
                                   style={{
                                     display: "flex",
                                     flexDirection: "column",
@@ -917,11 +917,14 @@
                               源路径
                             </span>
                             <div
+                              className="scrollable"
                               style={{
                                 marginTop: "4px",
                                 fontFamily: "var(--font-mono)",
                                 fontSize: "0.85rem",
                                 wordBreak: "break-all",
+                                maxHeight: "120px",
+                                overflowY: "auto",
                               }}
                             >
                               {job.from.split("\n").map((path, idx) => (
@@ -1033,11 +1036,14 @@
                                 选项
                               </span>
                               <div
+                                className="scrollable"
                                 style={{
                                   marginTop: "8px",
                                   display: "flex",
                                   flexDirection: "column",
                                   gap: "8px",
+                                  maxHeight: "120px",
+                                  overflowY: "auto",
                                 }}
                               >
                                 {Object.entries(job.opts).map(
@@ -1174,6 +1180,43 @@
           setFormData((prev) => ({ ...prev, [field]: value }));
         };
 
+        // Handle Ctrl+D / Cmd+D to duplicate current line
+        const handleDuplicateLine = (e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key === "d") {
+            e.preventDefault();
+            const textarea = e.target;
+            const { value, selectionStart, selectionEnd } = textarea;
+
+            // Find the start and end of the current line
+            const beforeCursor = value.substring(0, selectionStart);
+            const afterCursor = value.substring(selectionEnd);
+            const lastNewline = beforeCursor.lastIndexOf("\n");
+            const nextNewline = afterCursor.indexOf("\n");
+
+            const lineStart = lastNewline + 1;
+            const lineEnd =
+              nextNewline === -1 ? value.length : selectionEnd + nextNewline;
+            const currentLine = value.substring(lineStart, lineEnd);
+
+            // Insert the duplicated line
+            const newValue =
+              value.substring(0, lineEnd) +
+              "\n" +
+              currentLine +
+              value.substring(lineEnd);
+            const newCursorPos = lineEnd + 1 + currentLine.length;
+
+            // Update the field
+            const fieldName = textarea.name;
+            handleChange(fieldName, newValue);
+
+            // Set cursor position after state update
+            setTimeout(() => {
+              textarea.setSelectionRange(newCursorPos, newCursorPos);
+            }, 0);
+          }
+        };
+
         const handleSubmit = (e) => {
           e.preventDefault();
           // Parse opts JSON if present
@@ -1261,8 +1304,10 @@
                       }}
                     >
                       <textarea
+                        name="from"
                         value={formData.from || ""}
                         onChange={(e) => handleChange("from", e.target.value)}
+                        onKeyDown={handleDuplicateLine}
                         placeholder="/path/to/source\n/another/path"
                         rows="4"
                         required
@@ -1333,12 +1378,14 @@
                   <div className="form-field">
                     <label>选项 (JSON)</label>
                     <textarea
+                      name="opts"
                       value={
                         typeof formData.opts === "object"
                           ? JSON.stringify(formData.opts, null, 2)
                           : formData.opts || "{}"
                       }
                       onChange={(e) => handleChange("opts", e.target.value)}
+                      onKeyDown={handleDuplicateLine}
                       placeholder='{"key": "value"}'
                       rows="4"
                     />
